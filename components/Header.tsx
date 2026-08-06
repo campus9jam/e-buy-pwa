@@ -7,33 +7,38 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function Header() {
   const pathname = usePathname();
-  const [user, setUser] = useState<{ role: string; email?: string } | null>(null);
+  const [user, setUser] = useState<{ role: string; email?: string; identity?: string } | null>(null);
 
   useEffect(() => {
-    // Check JWT auth state
+    // Check localStorage first for immediate display
+    const stored = localStorage.getItem("ebuy_user");
+    if (stored) {
+      try {
+        setUser(JSON.parse(stored));
+      } catch {}
+    }
+
+    // Then verify with API (cookie-based) to keep it in sync
     fetch("/api/auth/me")
       .then((res) => res.json())
       .then((data) => {
         if (data.user) {
           setUser(data.user);
-        } else {
-          // Check for guest user (customer)
-          const guest = localStorage.getItem("ebuy_user");
-          if (guest) setUser(JSON.parse(guest));
+          // Keep localStorage in sync
+          localStorage.setItem("ebuy_user", JSON.stringify(data.user));
         }
       })
-      .catch(() => {
-        const guest = localStorage.getItem("ebuy_user");
-        if (guest) setUser(JSON.parse(guest));
-      });
+      .catch(() => {});
   }, []);
 
   const signOut = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
     localStorage.removeItem("ebuy_user");
     setUser(null);
     window.location.href = "/";
   };
+
+  const isAdmin = user?.role === "admin" || user?.role === "super-admin";
 
   return (
     <header className="bg-primary dark:bg-slate-900 text-white px-4 py-3 shadow-md sticky top-0 z-50 flex justify-between items-center">
@@ -47,7 +52,7 @@ export default function Header() {
         <Link href="/" className="text-xs font-medium hover:bg-blue-600 dark:hover:bg-slate-700 px-3 py-1.5 rounded transition hidden sm:block">
           Shop
         </Link>
-        {user?.role === "admin" || user?.role === "super-admin" ? (
+        {isAdmin ? (
           <>
             <Link href="/admin" className="text-xs font-semibold bg-blue-700 dark:bg-slate-700 px-3 py-1.5 rounded hover:bg-blue-600 dark:hover:bg-slate-600 transition">
               👑 Admin

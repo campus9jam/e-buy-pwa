@@ -6,7 +6,7 @@ import Header from "@/components/Header";
 
 export default function AuthPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<"customer" | "admin">("customer");
+  const [mode, setMode] = useState<"customer" | "admin">("admin");
   const [identity, setIdentity] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -39,7 +39,11 @@ export default function AuthPage() {
         return;
       }
 
-      router.push("/admin");
+      // Store user info in localStorage as backup (cookie is httpOnly)
+      localStorage.setItem("ebuy_user", JSON.stringify(data));
+
+      // Small delay to ensure cookie is fully set before redirect
+      setTimeout(() => router.push("/admin"), 200);
     } catch {
       setError("Network error. Please try again.");
     } finally {

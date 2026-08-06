@@ -39,6 +39,10 @@ interface Order {
 
 type Tab = "accounts" | "inventory" | "orders";
 
+function isAdmin(user: any): boolean {
+  return user && (user.role === "admin" || user.role === "super-admin");
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
@@ -59,10 +63,38 @@ export default function AdminPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   useEffect(() => {
+    // Check localStorage first for immediate access
+    const stored = localStorage.getItem("ebuy_user");
+    if (stored) {
+      try {
+        const localUser = JSON.parse(stored);
+        if (isAdmin(localUser)) {
+          setAuthorized(true);
+          setChecking(false);
+          fetchSettings();
+          fetchDevices();
+          fetchOrders();
+          // Still verify with API in background (cookie-based)
+          fetch("/api/auth/me")
+            .then((res) => res.json())
+            .then((data) => {
+              if (!data.user) {
+                // Cookie not ready yet, that's OK — localStorage has the auth
+                console.log("Cookie not yet set, using localStorage auth");
+              }
+            })
+            .catch(() => {});
+          return;
+        }
+      } catch {}
+    }
+
+    // No localStorage admin — check API (cookie might exist from a previous session)
     fetch("/api/auth/me")
       .then((res) => res.json())
       .then((data) => {
-        if (data.user && (data.user.role === "admin" || data.user.role === "super-admin")) {
+        if (data.user && isAdmin(data.user)) {
+          localStorage.setItem("ebuy_user", JSON.stringify(data.user));
           setAuthorized(true);
           fetchSettings();
           fetchDevices();
@@ -92,6 +124,7 @@ export default function AdminPage() {
 
   const fetchOrders = async () => {
     const res = await fetch("/api/orders");
+    if (!res.ok) return;
     const data = await res.json();
     setOrders(data);
   };
@@ -99,11 +132,16 @@ export default function AdminPage() {
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingSettings(true);
-    await fetch("/api/settings", {
+    const res = await fetch("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(settings),
     });
+    if (!res.ok) {
+      alert("Session expired. Please sign in again.");
+      router.push("/auth");
+      return;
+    }
     setSavingSettings(false);
     setSettingsSaved(true);
     setTimeout(() => setSettingsSaved(false), 3000);
@@ -119,7 +157,7 @@ export default function AdminPage() {
 
   const handleAddDevice = async (e: React.FormEvent) => {
     e.preventDefault();
-    await fetch("/api/devices", {
+    const res = await fetch("/api/devices", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -129,6 +167,11 @@ export default function AdminPage() {
         image: newDeviceImage,
       }),
     });
+    if (!res.ok) {
+      alert("Session expired. Please sign in again.");
+      router.push("/auth");
+      return;
+    }
     setNewDevice({ name: "", price: "", specs: "" });
     setNewDeviceImage(null);
     fetchDevices();
