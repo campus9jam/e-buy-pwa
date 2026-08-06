@@ -1,17 +1,31 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Header from "@/components/Header";
 
-export default function AuthPage() {
+function AdminAuthContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [mode, setMode] = useState<"customer" | "admin">("admin");
   const [identity, setIdentity] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [googleError, setGoogleError] = useState("");
+
+  useEffect(() => {
+    const err = searchParams.get("error");
+    if (err === "google_unauthorized") {
+      const emailParam = searchParams.get("email");
+      setGoogleError(`The Google account "${emailParam || ""}" is not authorized as an admin. Use Easybuy20000@gmail.com.`);
+    } else if (err === "google_not_configured") {
+      setGoogleError("Google sign-in is not configured yet. Use email/password for now.");
+    } else if (err && err.startsWith("google_")) {
+      setGoogleError("Google sign-in failed. Please try again or use email/password.");
+    }
+  }, [searchParams]);
 
   const handleCustomerSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,10 +53,7 @@ export default function AuthPage() {
         return;
       }
 
-      // Store user info in localStorage as backup (cookie is httpOnly)
       localStorage.setItem("ebuy_user", JSON.stringify(data));
-
-      // Small delay to ensure cookie is fully set before redirect
       setTimeout(() => router.push("/admin"), 200);
     } catch {
       setError("Network error. Please try again.");
@@ -51,129 +62,169 @@ export default function AuthPage() {
     }
   };
 
+  const handleGoogleSignIn = () => {
+    window.location.href = "/api/auth/google";
+  };
+
+  return (
+    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-6 fade-in">
+      {/* Mode toggle */}
+      <div className="flex space-x-2 border-b border-slate-100 dark:border-slate-700 pb-4">
+        <button
+          onClick={() => setMode("customer")}
+          className={`flex-1 text-xs font-bold py-2 rounded-lg transition ${
+            mode === "customer"
+              ? "bg-primary text-white"
+              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+          }`}
+        >
+          🛒 Customer
+        </button>
+        <button
+          onClick={() => setMode("admin")}
+          className={`flex-1 text-xs font-bold py-2 rounded-lg transition ${
+            mode === "admin"
+              ? "bg-primary text-white"
+              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+          }`}
+        >
+          👑 Admin
+        </button>
+      </div>
+
+      {mode === "customer" ? (
+        <>
+          <div className="text-center space-y-2">
+            <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">Customer Sign In</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Enter your name or phone to start shopping.
+            </p>
+          </div>
+
+          <form onSubmit={handleCustomerSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Name or Phone Number
+              </label>
+              <input
+                type="text"
+                required
+                value={identity}
+                onChange={(e) => setIdentity(e.target.value)}
+                placeholder="e.g., Adams or 08012345678"
+                className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
+              />
+            </div>
+            <button
+              type="submit"
+              className="w-full bg-primary hover:bg-primaryHover text-white font-bold py-3 rounded-xl shadow-md transition text-sm"
+            >
+              Start Shopping 🛒
+            </button>
+          </form>
+        </>
+      ) : (
+        <>
+          <div className="text-center space-y-2">
+            <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">Admin Sign In</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Secure login for inventory & payment management.
+            </p>
+          </div>
+
+          {/* Google Sign-In Button */}
+          <button
+            onClick={handleGoogleSignIn}
+            className="w-full flex items-center justify-center gap-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-white font-medium py-2.5 rounded-xl transition text-sm shadow-sm"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            Sign in with Google
+          </button>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
+            <span className="text-xs text-slate-400 dark:text-slate-500">or</span>
+            <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
+          </div>
+
+          {/* Google error message */}
+          {googleError && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 rounded-lg text-xs text-amber-700 dark:text-amber-400">
+              ⚠️ {googleError}
+            </div>
+          )}
+
+          <form onSubmit={handleAdminLogin} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Email
+              </label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="admin@e-buy.com"
+                className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Password
+              </label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
+              />
+            </div>
+
+            {error && (
+              <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 p-3 rounded-lg text-xs text-red-700 dark:text-red-400">
+                ⚠️ {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-primary hover:bg-primaryHover disabled:opacity-50 text-white font-bold py-3 rounded-xl shadow-md transition text-sm"
+            >
+              {loading ? "Signing in..." : "Sign In to Admin Portal 🔐"}
+            </button>
+          </form>
+        </>
+      )}
+
+      <div className="text-center">
+        <button
+          onClick={() => router.push("/")}
+          className="text-xs text-slate-500 dark:text-slate-400 hover:underline"
+        >
+          Cancel & Return to Shop
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function AuthPage() {
   return (
     <>
       <Header />
       <main className="flex-1 max-w-md w-full mx-auto p-4 md:p-6">
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-6 fade-in">
-          {/* Mode toggle */}
-          <div className="flex space-x-2 border-b border-slate-100 dark:border-slate-700 pb-4">
-            <button
-              onClick={() => setMode("customer")}
-              className={`flex-1 text-xs font-bold py-2 rounded-lg transition ${
-                mode === "customer"
-                  ? "bg-primary text-white"
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
-              }`}
-            >
-              🛒 Customer
-            </button>
-            <button
-              onClick={() => setMode("admin")}
-              className={`flex-1 text-xs font-bold py-2 rounded-lg transition ${
-                mode === "admin"
-                  ? "bg-primary text-white"
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
-              }`}
-            >
-              👑 Admin
-            </button>
-          </div>
-
-          {mode === "customer" ? (
-            <>
-              <div className="text-center space-y-2">
-                <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">Customer Sign In</h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Enter your name or phone to start shopping.
-                </p>
-              </div>
-
-              <form onSubmit={handleCustomerSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Name or Phone Number
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={identity}
-                    onChange={(e) => setIdentity(e.target.value)}
-                    placeholder="e.g., Adams or 08012345678"
-                    className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="w-full bg-primary hover:bg-primaryHover text-white font-bold py-3 rounded-xl shadow-md transition text-sm"
-                >
-                  Start Shopping 🛒
-                </button>
-              </form>
-            </>
-          ) : (
-            <>
-              <div className="text-center space-y-2">
-                <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">Admin Sign In</h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Secure login for inventory & payment management.
-                </p>
-              </div>
-
-              <form onSubmit={handleAdminLogin} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="admin@e-buy.com"
-                    className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Password
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
-                  />
-                </div>
-
-                {error && (
-                  <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 p-3 rounded-lg text-xs text-red-700 dark:text-red-400">
-                    ⚠️ {error}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-primary hover:bg-primaryHover disabled:opacity-50 text-white font-bold py-3 rounded-xl shadow-md transition text-sm"
-                >
-                  {loading ? "Signing in..." : "Sign In to Admin Portal 🔐"}
-                </button>
-              </form>
-            </>
-          )}
-
-          <div className="text-center">
-            <button
-              onClick={() => router.push("/")}
-              className="text-xs text-slate-500 dark:text-slate-400 hover:underline"
-            >
-              Cancel & Return to Shop
-            </button>
-          </div>
-        </div>
+        <Suspense fallback={<div className="text-center text-sm text-slate-500">Loading...</div>}>
+          <AdminAuthContent />
+        </Suspense>
       </main>
     </>
   );
