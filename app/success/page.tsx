@@ -9,27 +9,31 @@ export default function SuccessPage() {
   const [orderInfo, setOrderInfo] = useState<{
     device: { name: string; price: number };
     customerName: string;
+    downPayment?: number;
   } | null>(null);
   const [whatsappLink, setWhatsappLink] = useState("#");
 
   useEffect(() => {
     const stored = sessionStorage.getItem("lastOrder");
     if (stored) {
-      setOrderInfo(JSON.parse(stored));
-    }
+      const parsed = JSON.parse(stored);
+      setOrderInfo(parsed);
 
-    fetch("/api/settings")
-      .then((res) => res.json())
-      .then((settings) => {
-        const cleanNumber = settings.agentWhatsApp.replace(/[^0-9]/g, "");
-        const device = JSON.parse(stored || "{}").device;
-        const msg = encodeURIComponent(
-          `Hello Agent, I have completed payment for my order: ${device?.name} (₦${device?.price?.toLocaleString()}). My payment proof has been submitted.`
-        );
-        setWhatsappLink(`https://wa.me/${cleanNumber}?text=${msg}`);
-      })
-      .catch(() => {});
+      fetch("/api/settings")
+        .then((res) => res.json())
+        .then((settings) => {
+          const cleanNumber = settings.agentWhatsApp.replace(/[^0-9]/g, "");
+          const downPayment = parsed.downPayment || Math.round(parsed.device?.price * 0.3) || 0;
+          const msg = encodeURIComponent(
+            `Hello Agent, I have completed my 30% down payment of ₦${downPayment.toLocaleString()} for: ${parsed.device?.name} (Total: ₦${parsed.device?.price?.toLocaleString()}). My payment proof has been submitted. Please confirm receipt.`
+          );
+          setWhatsappLink(`https://wa.me/${cleanNumber}?text=${msg}`);
+        })
+        .catch(() => {});
+    }
   }, []);
+
+  const downPayment = orderInfo?.downPayment || (orderInfo ? Math.round(orderInfo.device.price * 0.3) : 0);
 
   return (
     <>
@@ -49,14 +53,27 @@ export default function SuccessPage() {
           </div>
 
           {orderInfo && (
-            <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-4 rounded-xl text-left">
+            <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-4 rounded-xl text-left space-y-2">
               <p className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide mb-2">
                 Order Summary
               </p>
               <p className="text-sm font-semibold text-slate-900 dark:text-white">{orderInfo.device.name}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                ₦{orderInfo.device.price.toLocaleString()} • {orderInfo.customerName}
-              </p>
+              <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
+                <span>Total Price</span>
+                <span>₦{orderInfo.device.price.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-xs text-amber-600 dark:text-amber-400 font-medium">
+                <span>Down Payment Paid (30%)</span>
+                <span>₦{downPayment.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
+                <span>Remaining Balance</span>
+                <span>₦{(orderInfo.device.price - downPayment).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-200 dark:border-slate-700">
+                <span>Customer</span>
+                <span>{orderInfo.customerName}</span>
+              </div>
             </div>
           )}
 

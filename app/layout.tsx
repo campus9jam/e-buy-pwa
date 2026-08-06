@@ -6,6 +6,13 @@ export const metadata: Metadata = {
   title: "E-Buy | Simple Device Financing",
   description: "Own your device today with flexible payment solutions tailored for your lifestyle.",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "32x32" },
+      { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: "/icons/apple-touch-icon.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

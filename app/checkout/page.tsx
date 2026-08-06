@@ -40,6 +40,9 @@ export default function CheckoutPage() {
       .catch(() => {});
   }, [router]);
 
+  // Calculate 30% down payment
+  const downPayment = device ? Math.round(device.price * 0.3) : 0;
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!device) return;
@@ -69,13 +72,15 @@ export default function CheckoutPage() {
           bvn: formData.get("bvn"),
           nin: formData.get("nin"),
           address: formData.get("address"),
+          downPayment,
+          devicePrice: device.price,
           paymentProof,
         }),
       });
 
       sessionStorage.setItem(
         "lastOrder",
-        JSON.stringify({ device, customerName: formData.get("customerName") })
+        JSON.stringify({ device, customerName: formData.get("customerName"), downPayment })
       );
       router.push("/success");
     } catch (error) {
@@ -164,14 +169,39 @@ export default function CheckoutPage() {
 
             <hr className="border-slate-100 dark:border-slate-700 my-4" />
 
-            {/* Monnify Payment Info */}
+            {/* Payment Section with Down Payment */}
             <div className="space-y-3">
               <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                2. Monnify Bank Transfer
+                2. Down Payment (30%)
               </h3>
+
+              {/* Down Payment Breakdown */}
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 rounded-xl space-y-2">
+                <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
+                  <span>Device Total Price</span>
+                  <span className="font-medium">₦{device.price.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
+                  <span>Down Payment Rate</span>
+                  <span className="font-medium">30%</span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t border-amber-200 dark:border-amber-800">
+                  <span className="text-sm font-bold text-amber-700 dark:text-amber-400">
+                    Amount to Transfer Now
+                  </span>
+                  <span className="text-2xl font-extrabold text-amber-700 dark:text-amber-400">
+                    ₦{downPayment.toLocaleString()}
+                  </span>
+                </div>
+                <p className="text-xs text-amber-600 dark:text-amber-500 pt-1">
+                  ⚠️ Transfer only the down payment amount. The remaining 70% will be paid in installments after delivery.
+                </p>
+              </div>
+
+              {/* Bank Transfer Details */}
               <div className="bg-slate-900 dark:bg-slate-800 text-white p-4 rounded-xl space-y-2 text-sm shadow-inner">
                 <div className="flex justify-between text-xs text-slate-400">
-                  <span>Target Bank Account</span>
+                  <span>Target Bank Account (Monnify)</span>
                   <span className="text-emerald-400 font-medium">● Active Secure Channel</span>
                 </div>
                 <div className="flex justify-between items-center pt-1">
@@ -212,7 +242,7 @@ export default function CheckoutPage() {
               disabled={submitting}
               className="w-full bg-primary hover:bg-primaryHover disabled:opacity-50 text-white font-bold py-3 rounded-xl shadow-md transition text-sm"
             >
-              {submitting ? "Submitting..." : "Complete Order & Contact Agent 🚀"}
+              {submitting ? "Submitting..." : `Complete Order — ₦${downPayment.toLocaleString()} Down Payment 🚀`}
             </button>
           </form>
         </div>

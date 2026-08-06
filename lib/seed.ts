@@ -28,6 +28,8 @@ async function main() {
     "bvn" TEXT,
     "nin" TEXT,
     "address" TEXT,
+    "downPayment" INTEGER DEFAULT 0,
+    "devicePrice" INTEGER DEFAULT 0,
     "paymentProof" TEXT,
     "status" TEXT NOT NULL DEFAULT 'pending',
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -86,7 +88,7 @@ async function main() {
     sql: `INSERT OR REPLACE INTO "Admin" (id, email, passwordHash, role) VALUES (?, ?, ?, 'super-admin')`,
     args: ["super-admin", adminEmail, hash],
   });
-  console.log("✅ Super admin seeded (Easybuy20000@gmail.com)");
+  console.log("✅ Super admin seeded");
 
   console.log("\n🎉 Seed complete!");
 }

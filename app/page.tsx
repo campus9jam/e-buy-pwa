@@ -45,7 +45,7 @@ export default function LandingPage() {
             </p>
           </div>
           <div className="mt-4 md:mt-0 bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl border border-white/20 text-xs font-medium">
-            ⚡ Instant Checkout & Agent Match
+            ⚡ 30% Down Payment • Pay Rest in Installments
           </div>
         </div>
 
@@ -58,33 +58,39 @@ export default function LandingPage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {devices.map((device) => (
-            <div
-              key={device.id}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition fade-in"
-            >
-              <div>
-                {device.image ? (
-                  <img src={device.image} alt={device.name} className="h-40 w-full object-cover rounded-lg mb-3" />
-                ) : (
-                  <div className="h-40 bg-slate-100 dark:bg-slate-800 rounded-lg mb-3 flex items-center justify-center text-slate-400 dark:text-slate-500 font-medium text-sm">
-                    📱 {device.name}
-                  </div>
-                )}
-                <h4 className="font-bold text-slate-900 dark:text-white">{device.name}</h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">{device.specs}</p>
-                <p className="text-primary font-extrabold text-lg">
-                  ₦{device.price.toLocaleString()}
-                </p>
-              </div>
-              <button
-                onClick={() => handleBuyNow(device)}
-                className="mt-4 w-full bg-primary hover:bg-primaryHover text-white font-medium py-2 px-4 rounded-lg text-sm transition"
+          {devices.map((device) => {
+            const downPayment = Math.round(device.price * 0.3);
+            return (
+              <div
+                key={device.id}
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition fade-in"
               >
-                Buy Now
-              </button>
-            </div>
-          ))}
+                <div>
+                  {device.image ? (
+                    <img src={device.image} alt={device.name} className="h-40 w-full object-cover rounded-lg mb-3" />
+                  ) : (
+                    <div className="h-40 bg-slate-100 dark:bg-slate-800 rounded-lg mb-3 flex items-center justify-center text-slate-400 dark:text-slate-500 font-medium text-sm">
+                      📱 {device.name}
+                    </div>
+                  )}
+                  <h4 className="font-bold text-slate-900 dark:text-white">{device.name}</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">{device.specs}</p>
+                  <div className="flex justify-between items-baseline">
+                    <p className="text-primary font-extrabold text-lg">₦{device.price.toLocaleString()}</p>
+                  </div>
+                  <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mt-1">
+                    30% Down: ₦{downPayment.toLocaleString()}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleBuyNow(device)}
+                  className="mt-3 w-full bg-primary hover:bg-primaryHover text-white font-medium py-2 px-4 rounded-lg text-sm transition"
+                >
+                  Buy Now
+                </button>
+              </div>
+            );
+          })}
         </div>
       </main>
 
