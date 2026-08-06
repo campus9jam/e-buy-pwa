@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Device {
+  id        String   @id @default(cuid())
+  name      String
+  price     Int
+  specs     String
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
+}
+
+model Order {
+  id            String   @id @default(cuid())
+  deviceId      String
+  device        Device   @relation(fields: [deviceId], references: [id])
+  customerName  String
+  phone         String
+  bvn           String
+  paymentProof  String? // URL or base64 of uploaded receipt
+  status        String   @default("pending") // pending | verified | rejected | completed
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model PaymentSettings {
+  id             String   @id @default("singleton")
+  bankName       String
+  accountNumber  String
+  accountName    String
+  agentWhatsApp  String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
