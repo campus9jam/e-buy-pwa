@@ -45,14 +45,14 @@ export default function LandingPage() {
             </p>
           </div>
           <div className="mt-4 md:mt-0 bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl border border-white/20 text-xs font-medium">
-            ⚡ Instant Checkout &amp; Agent Match
+            ⚡ Instant Checkout & Agent Match
           </div>
         </div>
 
         {/* Inventory Grid */}
         <div className="flex justify-between items-center">
-          <h2 className="text-lg font-bold text-slate-800">Available Inventory</h2>
-          <span className="text-xs text-slate-500 font-medium">
+          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Available Inventory</h2>
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
             {loading ? "Loading devices..." : `${devices.length} devices available`}
           </span>
         </div>
@@ -61,22 +61,18 @@ export default function LandingPage() {
           {devices.map((device) => (
             <div
               key={device.id}
-              className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition fade-in"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition fade-in"
             >
               <div>
                 {device.image ? (
-                  <img
-                    src={device.image}
-                    alt={device.name}
-                    className="h-40 w-full object-cover rounded-lg mb-3"
-                  />
+                  <img src={device.image} alt={device.name} className="h-40 w-full object-cover rounded-lg mb-3" />
                 ) : (
-                  <div className="h-40 bg-slate-100 rounded-lg mb-3 flex items-center justify-center text-slate-400 font-medium text-sm">
+                  <div className="h-40 bg-slate-100 dark:bg-slate-800 rounded-lg mb-3 flex items-center justify-center text-slate-400 dark:text-slate-500 font-medium text-sm">
                     📱 {device.name}
                   </div>
                 )}
-                <h4 className="font-bold text-slate-900">{device.name}</h4>
-                <p className="text-xs text-slate-500 mb-2">{device.specs}</p>
+                <h4 className="font-bold text-slate-900 dark:text-white">{device.name}</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">{device.specs}</p>
                 <p className="text-primary font-extrabold text-lg">
                   ₦{device.price.toLocaleString()}
                 </p>
@@ -92,7 +88,7 @@ export default function LandingPage() {
         </div>
       </main>
 
-      <footer className="bg-white border-t border-slate-200 text-center py-4 text-xs text-slate-400 mt-auto">
+      <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 text-center py-4 text-xs text-slate-400 dark:text-slate-500 mt-auto">
         E-Buy PWA &bull; Secure Device Financing
       </footer>
     </>

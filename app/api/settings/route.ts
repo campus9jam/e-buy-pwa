@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getTokenFromRequest } from "@/lib/auth";
 
 const DEFAULT_SETTINGS = {
   id: "singleton",
@@ -29,17 +30,16 @@ export async function GET() {
   }
 }
 
-// PUT /api/settings — update payment settings (admin only)
+// PUT /api/settings — update payment settings (admin only, JWT auth)
 export async function PUT(request: Request) {
   try {
-    const adminSecret = request.headers.get("x-admin-secret");
-    if (process.env.ADMIN_SECRET && adminSecret !== process.env.ADMIN_SECRET) {
+    const user = await getTokenFromRequest(request);
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();
 
-    // Upsert: try insert first, if conflict update
     await db.execute({
       sql: `INSERT INTO PaymentSettings (id, bankName, accountNumber, accountName, agentWhatsApp)
             VALUES ('singleton', ?, ?, ?, ?)

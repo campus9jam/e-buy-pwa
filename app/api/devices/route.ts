@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getTokenFromRequest } from "@/lib/auth";
 
 // GET /api/devices — list all devices
 export async function GET() {
@@ -14,7 +15,6 @@ export async function GET() {
     }));
     return NextResponse.json(devices);
   } catch (error) {
-    // Fallback to seed data if DB isn't available yet
     return NextResponse.json([
       { id: "tecno-spark-20-pro", name: "Tecno Spark 20 Pro", price: 185000, specs: "8GB RAM | 256GB ROM", image: null },
       { id: "infinix-hot-40i", name: "Infinix Hot 40i", price: 145000, specs: "4GB RAM | 128GB ROM", image: null },
@@ -23,11 +23,11 @@ export async function GET() {
   }
 }
 
-// POST /api/devices — add a new device (admin only)
+// POST /api/devices — add a new device (admin only, JWT auth)
 export async function POST(request: Request) {
   try {
-    const adminSecret = request.headers.get("x-admin-secret");
-    if (process.env.ADMIN_SECRET && adminSecret !== process.env.ADMIN_SECRET) {
+    const user = await getTokenFromRequest(request);
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

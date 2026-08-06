@@ -47,7 +47,7 @@ export default function CheckoutPage() {
     setSubmitting(true);
     const formData = new FormData(e.currentTarget);
 
-    // Convert file to base64 for storage (prototype approach)
+    // Convert file to base64 for storage
     const file = formData.get("paymentProof") as File;
     let paymentProof = null;
     if (file && file.size > 0) {
@@ -67,11 +67,12 @@ export default function CheckoutPage() {
           customerName: formData.get("customerName"),
           phone: formData.get("phone"),
           bvn: formData.get("bvn"),
+          nin: formData.get("nin"),
+          address: formData.get("address"),
           paymentProof,
         }),
       });
 
-      // Store order info for success page
       sessionStorage.setItem(
         "lastOrder",
         JSON.stringify({ device, customerName: formData.get("customerName") })
@@ -95,16 +96,19 @@ export default function CheckoutPage() {
 
   if (!device) return null;
 
+  const inputClass = "w-full text-sm border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none";
+  const labelClass = "block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1";
+
   return (
     <>
       <Header />
       <main className="flex-1 max-w-xl w-full mx-auto p-4 md:p-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6 fade-in">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-6 fade-in">
           {/* Header */}
-          <div className="flex items-center justify-between border-b pb-4">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-4">
             <div>
-              <h2 className="text-xl font-bold text-slate-900">Secure Order &amp; KYC</h2>
-              <p className="text-xs text-slate-500">Step 2 of 2: Verification and Payment Transfer</p>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Secure Order & KYC</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Step 2 of 2: Verification and Payment Transfer</p>
             </div>
             <Link href="/" className="text-xs text-primary font-medium hover:underline">
               ← Back to Shop
@@ -112,10 +116,10 @@ export default function CheckoutPage() {
           </div>
 
           {/* Selected Item Summary */}
-          <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-center justify-between">
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 p-4 rounded-xl flex items-center justify-between">
             <div>
-              <span className="font-bold text-slate-900 text-sm block">{device.name}</span>
-              <span className="text-xs text-slate-600">{device.specs}</span>
+              <span className="font-bold text-slate-900 dark:text-white text-sm block">{device.name}</span>
+              <span className="text-xs text-slate-600 dark:text-slate-400">{device.specs}</span>
             </div>
             <span className="text-primary font-extrabold text-base">
               ₦{device.price.toLocaleString()}
@@ -125,58 +129,47 @@ export default function CheckoutPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* KYC Section */}
             <div className="space-y-3">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                1. Customer Details &amp; KYC
+              <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                1. Customer Details & KYC Verification
               </h3>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Full Legal Name
-                </label>
-                <input
-                  type="text"
-                  name="customerName"
-                  required
-                  placeholder="e.g., Adams Idi"
-                  className="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-primary focus:outline-none"
-                />
+                <label className={labelClass}>Full Legal Name</label>
+                <input type="text" name="customerName" required placeholder="e.g., Adams Idi" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Phone Number</label>
+                <input type="tel" name="phone" required placeholder="08012345678" className={inputClass} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    required
-                    placeholder="08012345678"
-                    className="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-primary focus:outline-none"
-                  />
+                  <label className={labelClass}>BVN (Bank Verification)</label>
+                  <input type="text" name="bvn" maxLength={11} required placeholder="22200000000" className={inputClass} />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    BVN (Bank Verification)
-                  </label>
-                  <input
-                    type="text"
-                    name="bvn"
-                    maxLength={11}
-                    required
-                    placeholder="22200000000"
-                    className="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-primary focus:outline-none"
-                  />
+                  <label className={labelClass}>NIN (National ID)</label>
+                  <input type="text" name="nin" maxLength={11} required placeholder="12345678901" className={inputClass} />
                 </div>
+              </div>
+              <div>
+                <label className={labelClass}>Delivery Address</label>
+                <textarea
+                  name="address"
+                  required
+                  rows={2}
+                  placeholder="House number, street, area, city, state"
+                  className={inputClass}
+                />
               </div>
             </div>
 
-            <hr className="border-slate-100 my-4" />
+            <hr className="border-slate-100 dark:border-slate-700 my-4" />
 
             {/* Monnify Payment Info */}
             <div className="space-y-3">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+              <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                 2. Monnify Bank Transfer
               </h3>
-              <div className="bg-slate-900 text-white p-4 rounded-xl space-y-2 text-sm shadow-inner">
+              <div className="bg-slate-900 dark:bg-slate-800 text-white p-4 rounded-xl space-y-2 text-sm shadow-inner">
                 <div className="flex justify-between text-xs text-slate-400">
                   <span>Target Bank Account</span>
                   <span className="text-emerald-400 font-medium">● Active Secure Channel</span>
@@ -194,7 +187,7 @@ export default function CheckoutPage() {
                   <button
                     type="button"
                     onClick={copyAccountNumber}
-                    className="bg-slate-800 hover:bg-slate-700 text-xs text-blue-300 px-3 py-2 rounded-lg border border-slate-700 transition"
+                    className="bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 text-xs text-blue-300 px-3 py-2 rounded-lg border border-slate-700 dark:border-slate-600 transition"
                   >
                     {copied ? "✓ Copied!" : "Copy"}
                   </button>
@@ -204,15 +197,13 @@ export default function CheckoutPage() {
 
             {/* Proof of Payment Upload */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Upload Payment Receipt (.jpg/.png/.pdf)
-              </label>
+              <label className={labelClass}>Upload Payment Receipt (.jpg/.png/.pdf)</label>
               <input
                 type="file"
                 name="paymentProof"
                 required
                 accept="image/*,.pdf"
-                className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-primary hover:file:bg-blue-100 border border-slate-300 rounded-lg"
+                className="w-full text-xs text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 dark:file:bg-slate-800 file:text-primary dark:file:text-blue-400 hover:file:bg-blue-100 dark:hover:file:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800"
               />
             </div>
 

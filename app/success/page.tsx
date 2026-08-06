@@ -35,37 +35,37 @@ export default function SuccessPage() {
     <>
       <Header />
       <main className="flex-1 max-w-lg w-full mx-auto p-4 md:p-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 text-center space-y-6 fade-in">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 text-center space-y-6 fade-in">
           {/* Success Check */}
-          <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-3xl mx-auto shadow-inner">
+          <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center text-3xl mx-auto shadow-inner">
             ✓
           </div>
 
           <div>
-            <h2 className="text-xl font-extrabold text-slate-900">Order Submitted Successfully!</h2>
-            <p className="text-xs text-slate-500 mt-1">
-              Your details and payment proof have been saved locally &amp; securely.
+            <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">Order Submitted Successfully!</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Your details and payment proof have been saved securely.
             </p>
           </div>
 
           {orderInfo && (
-            <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-left">
-              <p className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">
+            <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-4 rounded-xl text-left">
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide mb-2">
                 Order Summary
               </p>
-              <p className="text-sm font-semibold text-slate-900">{orderInfo.device.name}</p>
-              <p className="text-xs text-slate-500">
+              <p className="text-sm font-semibold text-slate-900 dark:text-white">{orderInfo.device.name}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 ₦{orderInfo.device.price.toLocaleString()} • {orderInfo.customerName}
               </p>
             </div>
           )}
 
           {/* Agent WhatsApp Widget */}
-          <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-left space-y-3">
-            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+          <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-4 rounded-xl text-left space-y-3">
+            <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
               Next Step: Delivery Tracking
             </h3>
-            <p className="text-xs text-slate-600">
+            <p className="text-xs text-slate-600 dark:text-slate-400">
               Click below to chat directly with our active field agent on WhatsApp to confirm your
               delivery address and tracking status:
             </p>

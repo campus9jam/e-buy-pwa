@@ -1,12 +1,11 @@
 import { createClient } from "@libsql/client";
+import bcrypt from "bcryptjs";
 
 const url = process.env.DATABASE_URL || "file:./dev.db";
 const authToken = process.env.DATABASE_AUTH_TOKEN;
 
 const db = createClient(
-  url.startsWith("libsql://")
-    ? { url, authToken }
-    : { url }
+  url.startsWith("libsql://") ? { url, authToken } : { url }
 );
 
 async function main() {
@@ -26,7 +25,9 @@ async function main() {
     "deviceId" TEXT NOT NULL,
     "customerName" TEXT NOT NULL,
     "phone" TEXT NOT NULL,
-    "bvn" TEXT NOT NULL,
+    "bvn" TEXT,
+    "nin" TEXT,
+    "address" TEXT,
     "paymentProof" TEXT,
     "status" TEXT NOT NULL DEFAULT 'pending',
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -44,7 +45,16 @@ async function main() {
     "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`);
 
-  console.log("✅ Tables created");
+  await db.execute(`CREATE TABLE IF NOT EXISTS "Admin" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "email" TEXT NOT NULL UNIQUE,
+    "passwordHash" TEXT NOT NULL,
+    "role" TEXT NOT NULL DEFAULT 'admin',
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`);
+
+  console.log("✅ Tables created/verified");
 
   // Seed devices
   const devices = [
@@ -68,11 +78,20 @@ async function main() {
   });
   console.log("✅ Payment settings seeded");
 
+  // Seed super admin
+  const adminEmail = "Easybuy20000@gmail.com";
+  const adminPassword = "@Faruq1234";
+  const hash = await bcrypt.hash(adminPassword, 10);
+  await db.execute({
+    sql: `INSERT OR REPLACE INTO "Admin" (id, email, passwordHash, role) VALUES (?, ?, ?, 'super-admin')`,
+    args: ["super-admin", adminEmail, hash],
+  });
+  console.log("✅ Super admin seeded (Easybuy20000@gmail.com)");
+
   console.log("\n🎉 Seed complete!");
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  });
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});
