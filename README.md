@@ -6,7 +6,7 @@ A lean, serverless Progressive Web App for device financing with role-based acce
 
 - **Framework**: Next.js 14 (App Router) + TypeScript
 - **Styling**: Tailwind CSS
-- **Database**: Prisma ORM + SQLite (dev) / Turso (prod)
+- **Database**: Turso (libsql/SQLite at the edge) — free tier includes 500 databases
 - **PWA**: Web App Manifest (installable on mobile/desktop)
 - **Deployment**: Vercel (zero-config)
 
@@ -16,12 +16,14 @@ A lean, serverless Progressive Web App for device financing with role-based acce
 # 1. Install dependencies
 npm install
 
-# 2. Set up the database
+# 2. Set up environment
 cp .env.example .env
-npx prisma db push
-npx tsx lib/seed.ts
+# Edit .env with your Turso credentials (or use local SQLite: file:./dev.db)
 
-# 3. Run the dev server
+# 3. Seed the database
+npm run db:seed
+
+# 4. Run the dev server
 npm run dev
 ```
 
@@ -49,9 +51,6 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ### Step 1: Push to GitHub
 ```bash
-git init
-git add .
-git commit -m "Initial E-Buy PWA"
 git remote add origin https://github.com/YOUR_USERNAME/e-buy-pwa.git
 git push -u origin main
 ```
@@ -63,58 +62,47 @@ git push -u origin main
 4. Add environment variables (see below)
 5. Click Deploy
 
-### Step 3: Set Up Production Database (Turso)
+### Step 3: Environment Variables in Vercel
+
+| Variable | Description | Example |
+|---|---|---|
+| `DATABASE_URL` | Turso database URL | `libsql://e-buy-campus9jam.aws-ap-south-1.turso.io` |
+| `DATABASE_AUTH_TOKEN` | Turso database auth token | `eyJhbGciOi...` |
+| `ADMIN_SECRET` | Shared secret for admin API routes | `your-secure-string` |
+
+## Turso Database Setup
 
 1. Create a free Turso database at [turso.tech](https://turso.tech)
-2. Get your database URL and auth token
-3. Add these as Vercel environment variables:
-   - `DATABASE_URL` = `libsql://your-db.turso.io`
-   - `DATABASE_AUTH_TOKEN` = `your-token`
-   - `ADMIN_SECRET` = `a-secure-random-string`
-
-4. Run the schema on Turso:
-```bash
-npx prisma db push
-npx tsx lib/seed.ts
-```
-
-> **Note**: For Turso, update `prisma/schema.prisma` datasource to use the libsql adapter, or use a Prisma version that supports libsql natively. Alternatively, use Neon (PostgreSQL) by changing the provider to `"postgresql"`.
-
-## Environment Variables
-
-| Variable | Description | Default |
-|---|---|---|
-| `DATABASE_URL` | Database connection string | `file:./dev.db` |
-| `DATABASE_AUTH_TOKEN` | Turso auth token (prod only) | — |
-| `ADMIN_SECRET` | Shared secret for admin API routes | `change-me-in-production` |
+2. Create a database: `turso db create e-buy`
+3. Get the URL: `turso db show e-buy`
+4. Create an auth token: `turso db tokens create e-buy`
+5. Run the seed: `npm run db:seed`
 
 ## Project Structure
 
 ```
 e-buy-pwa/
 ├── app/
-│   ├── admin/page.tsx          # Admin dashboard
-│   ├── auth/page.tsx           # Sign in / role selection
+│   ├── admin/page.tsx           # Admin dashboard
+│   ├── auth/page.tsx            # Sign in / role selection
 │   ├── api/
-│   │   ├── devices/route.ts    # GET + POST devices
+│   │   ├── devices/route.ts     # GET + POST devices
 │   │   ├── devices/[id]/route.ts # DELETE device
-│   │   ├── orders/route.ts    # POST order, GET orders (admin)
-│   │   └── settings/route.ts  # GET + PUT payment settings
-│   ├── checkout/page.tsx       # KYC + Monnify payment + receipt upload
-│   ├── success/page.tsx        # Order confirmation + WhatsApp link
+│   │   ├── orders/route.ts      # POST order, GET orders (admin)
+│   │   └── settings/route.ts    # GET + PUT payment settings
+│   ├── checkout/page.tsx        # KYC + Monnify payment + receipt upload
+│   ├── success/page.tsx         # Order confirmation + WhatsApp link
 │   ├── globals.css
 │   ├── layout.tsx
-│   └── page.tsx                # Landing / shop catalog
+│   └── page.tsx                 # Landing / shop catalog
 ├── components/
-│   └── Header.tsx              # Shared navigation bar
+│   └── Header.tsx               # Shared navigation bar
 ├── lib/
-│   ├── prisma.ts               # Prisma client singleton
-│   └── seed.ts                 # Seed script (devices + settings)
-├── prisma/
-│   └── schema.prisma           # Database schema
+│   ├── db.ts                    # libsql database client
+│   └── seed.ts                  # Seed script (devices + settings)
 ├── public/
 │   ├── manifest.json            # PWA manifest
-│   └── icons/                  # App icons (add icon-192.png, icon-512.png)
+│   └── icons/                   # App icons
 ├── .env.example
 └── package.json
 ```
@@ -124,8 +112,6 @@ e-buy-pwa/
 The app is installable on mobile and desktop:
 - **Mobile (Chrome/Edge)**: Open the URL → browser menu → "Add to Home Screen"
 - **Desktop (Chrome/Edge)**: Click the install icon in the address bar
-
-Add `icon-192.png` and `icon-512.png` to `public/icons/` for proper home screen icons.
 
 ## License
 

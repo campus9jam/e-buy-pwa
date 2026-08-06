@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
 
 // DELETE /api/devices/[id] — remove a device (admin only)
 export async function DELETE(
@@ -8,13 +8,11 @@ export async function DELETE(
 ) {
   try {
     const adminSecret = request.headers.get("x-admin-secret");
-    if (adminSecret !== process.env.ADMIN_SECRET && process.env.ADMIN_SECRET) {
+    if (process.env.ADMIN_SECRET && adminSecret !== process.env.ADMIN_SECRET) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await prisma.device.delete({
-      where: { id: params.id },
-    });
+    await db.execute({ sql: `DELETE FROM Device WHERE id = ?`, args: [params.id] });
 
     return NextResponse.json({ success: true });
   } catch (error) {
