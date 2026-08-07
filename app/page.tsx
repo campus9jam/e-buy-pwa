@@ -35,66 +35,103 @@ export default function LandingPage() {
   return (
     <>
       <Header />
-      <main className="flex-1 max-w-4xl w-full mx-auto p-4 md:p-6 space-y-6">
+      <main className="flex-1 max-w-5xl w-full mx-auto p-4 md:p-6 space-y-8">
         {/* Hero Banner */}
-        <div className="bg-gradient-to-r from-primary to-blue-600 text-white p-6 rounded-2xl shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center fade-in">
-          <div>
-            <h1 className="text-2xl font-black mb-1">Own Your Device Today</h1>
-            <p className="text-blue-100 text-sm max-w-md">
+        <div className="hero-gradient text-white p-6 md:p-8 rounded-3xl shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center fade-in relative z-10">
+          <div className="relative z-10">
+            <h1 className="text-2xl md:text-3xl font-black mb-2 tracking-tight">Own Your Device Today</h1>
+            <p className="text-blue-100 text-sm max-w-md leading-relaxed">
               Simple device financing with flexible down payments and secure local verification.
             </p>
           </div>
-          <div className="mt-4 md:mt-0 bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl border border-white/20 text-xs font-medium">
-            ⚡ 30% Down Payment • Pay Rest in Installments
+          <div className="mt-4 md:mt-0 relative z-10">
+            <div className="glass px-5 py-3 rounded-2xl text-center">
+              <p className="text-xs font-medium text-white/90">⚡ 30% Down Payment</p>
+              <p className="text-[10px] text-white/70 mt-0.5">Pay rest in installments</p>
+            </div>
           </div>
         </div>
 
         {/* Inventory Grid */}
-        <div className="flex justify-between items-center">
-          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Available Inventory</h2>
-          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-            {loading ? "Loading devices..." : `${devices.length} devices available`}
-          </span>
+        <div className="flex justify-between items-end">
+          <div>
+            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Available Inventory</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              {loading ? "Loading devices..." : `${devices.length} devices available`}
+            </p>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {devices.map((device) => {
-            const downPayment = Math.round(device.price * 0.3);
-            return (
-              <div
-                key={device.id}
-                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition fade-in"
-              >
-                <div>
-                  {device.image ? (
-                    <img src={device.image} alt={device.name} className="h-40 w-full object-cover rounded-lg mb-3" />
-                  ) : (
-                    <div className="h-40 bg-slate-100 dark:bg-slate-800 rounded-lg mb-3 flex items-center justify-center text-slate-400 dark:text-slate-500 font-medium text-sm">
-                      📱 {device.name}
-                    </div>
-                  )}
-                  <h4 className="font-bold text-slate-900 dark:text-white">{device.name}</h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">{device.specs}</p>
-                  <div className="flex justify-between items-baseline">
-                    <p className="text-primary font-extrabold text-lg">₦{device.price.toLocaleString()}</p>
-                  </div>
-                  <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mt-1">
-                    30% Down: ₦{downPayment.toLocaleString()}
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleBuyNow(device)}
-                  className="mt-3 w-full bg-primary hover:bg-primaryHover text-white font-medium py-2 px-4 rounded-lg text-sm transition"
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="shimmer rounded-2xl h-72" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+            {devices.map((device, idx) => {
+              const downPayment = Math.round(device.price * 0.3);
+              const remaining = device.price - downPayment;
+              return (
+                <div
+                  key={device.id}
+                  className="glass-card rounded-2xl p-5 flex flex-col fade-in"
+                  style={{ animationDelay: `${idx * 80}ms` }}
                 >
-                  Buy Now
-                </button>
-              </div>
-            );
-          })}
-        </div>
+                  {/* Device Image — full phone visible with object-contain */}
+                  <div className="device-image-wrap h-52 mb-4 flex items-center justify-center p-4">
+                    {device.image ? (
+                      <img
+                        src={device.image}
+                        alt={device.name}
+                        className="h-full w-full object-contain"
+                        style={{ filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.15))" }}
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500">
+                        <span className="text-5xl mb-2">📱</span>
+                        <span className="text-xs font-medium">{device.name}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Device Info */}
+                  <div className="flex-1 flex flex-col">
+                    <h4 className="font-bold text-slate-900 dark:text-white text-base">{device.name}</h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">{device.specs}</p>
+
+                    {/* Price section */}
+                    <div className="glass rounded-xl p-3 space-y-1.5 mb-4">
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-xs text-slate-500 dark:text-slate-400">Total Price</span>
+                        <span className="text-slate-900 dark:text-white font-bold text-sm">₦{device.price.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">30% Down Payment</span>
+                        <span className="text-amber-600 dark:text-amber-400 font-extrabold text-base">₦{downPayment.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-baseline pt-1.5 border-t border-slate-200/50 dark:border-slate-700/50">
+                        <span className="text-xs text-slate-500 dark:text-slate-400">Remaining (installments)</span>
+                        <span className="text-slate-600 dark:text-slate-300 font-medium text-xs">₦{remaining.toLocaleString()}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleBuyNow(device)}
+                      className="btn-primary w-full py-3 rounded-xl text-sm"
+                    >
+                      Buy Now →
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </main>
 
-      <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 text-center py-4 text-xs text-slate-400 dark:text-slate-500 mt-auto">
+      <footer className="text-center py-6 text-xs text-slate-400 dark:text-slate-500 mt-auto">
         E-Buy PWA &bull; Secure Device Financing
       </footer>
     </>

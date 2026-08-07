@@ -68,11 +68,9 @@ function AdminAuthContent() {
     setGoogleError("");
 
     try {
-      // Firebase Google sign-in popup
       const result = await signInWithPopup(auth, googleProvider);
       const idToken = await result.user.getIdToken();
 
-      // Send ID token to our API for verification
       const res = await fetch("/api/auth/google/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -83,19 +81,17 @@ function AdminAuthContent() {
 
       if (!res.ok) {
         setGoogleError(data.error || "Google sign-in failed");
-        // Sign out from Firebase since auth failed
         await auth.signOut();
         return;
       }
 
-      // Store user info in localStorage and redirect to admin
       localStorage.setItem("ebuy_user", JSON.stringify(data));
       setTimeout(() => router.push("/admin"), 200);
     } catch (error: any) {
       if (error?.code === "auth/popup-closed-by-user") {
-        // User closed the popup, don't show error
+        // User closed popup
       } else if (error?.code === "auth/cancelled-popup-request") {
-        // Another popup was opened, ignore
+        // Another popup opened
       } else {
         setGoogleError("Google sign-in failed. Please try again.");
       }
@@ -104,27 +100,21 @@ function AdminAuthContent() {
     }
   };
 
+  const inputClass = "w-full text-sm border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 bg-white/80 dark:bg-slate-800/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none transition";
+
   return (
-    <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-6 fade-in">
+    <div className="glass-card rounded-3xl p-6 space-y-6 fade-in">
       {/* Mode toggle */}
-      <div className="flex space-x-2 border-b border-slate-100 dark:border-slate-700 pb-4">
+      <div className="flex space-x-2 border-b border-slate-200/50 dark:border-slate-700/50 pb-4">
         <button
           onClick={() => setMode("customer")}
-          className={`flex-1 text-xs font-bold py-2 rounded-lg transition ${
-            mode === "customer"
-              ? "bg-primary text-white"
-              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
-          }`}
+          className={`flex-1 text-xs font-bold py-2.5 rounded-xl transition ${mode === "customer" ? "btn-primary" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"}`}
         >
           🛒 Customer
         </button>
         <button
           onClick={() => setMode("admin")}
-          className={`flex-1 text-xs font-bold py-2 rounded-lg transition ${
-            mode === "admin"
-              ? "bg-primary text-white"
-              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
-          }`}
+          className={`flex-1 text-xs font-bold py-2.5 rounded-xl transition ${mode === "admin" ? "btn-primary" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"}`}
         >
           👑 Admin
         </button>
@@ -134,50 +124,31 @@ function AdminAuthContent() {
         <>
           <div className="text-center space-y-2">
             <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">Customer Sign In</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Enter your name or phone to start shopping.
-            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Enter your name or phone to start shopping.</p>
           </div>
-
           <form onSubmit={handleCustomerSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Name or Phone Number
-              </label>
-              <input
-                type="text"
-                required
-                value={identity}
-                onChange={(e) => setIdentity(e.target.value)}
-                placeholder="e.g., Adams or 08012345678"
-                className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
-              />
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Name or Phone Number</label>
+              <input type="text" required value={identity} onChange={(e) => setIdentity(e.target.value)} placeholder="e.g., Adams or 08012345678" className={inputClass} />
             </div>
-            <button
-              type="submit"
-              className="w-full bg-primary hover:bg-primaryHover text-white font-bold py-3 rounded-xl shadow-md transition text-sm"
-            >
-              Start Shopping 🛒
-            </button>
+            <button type="submit" className="btn-primary w-full py-3 rounded-xl text-sm">Start Shopping 🛒</button>
           </form>
         </>
       ) : (
         <>
           <div className="text-center space-y-2">
             <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">Admin Sign In</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Secure login for inventory & payment management.
-            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Secure login for inventory & payment management.</p>
           </div>
 
-          {/* Google Sign-In Button */}
+          {/* Google Sign-In */}
           <button
             onClick={handleGoogleSignIn}
             disabled={googleLoading}
-            className="w-full flex items-center justify-center gap-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 text-slate-700 dark:text-white font-medium py-2.5 rounded-xl transition text-sm shadow-sm"
+            className="w-full flex items-center justify-center gap-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 text-slate-700 dark:text-white font-medium py-3 rounded-xl transition text-sm shadow-sm"
           >
             {googleLoading ? (
-              <span className="animate-pulse">Connecting to Google...</span>
+              <span className="animate-pulse">Connecting...</span>
             ) : (
               <>
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -198,52 +169,28 @@ function AdminAuthContent() {
             <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
           </div>
 
-          {/* Google error message */}
+          {/* Google error */}
           {googleError && (
-            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 rounded-lg text-xs text-amber-700 dark:text-amber-400">
+            <div className="glass border border-amber-300/50 dark:border-amber-700/50 p-3 rounded-lg text-xs text-amber-700 dark:text-amber-400">
               ⚠️ {googleError}
             </div>
           )}
 
           <form onSubmit={handleAdminLogin} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Email
-              </label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@e-buy.com"
-                className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
-              />
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Email</label>
+              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@e-buy.com" className={inputClass} />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Password
-              </label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
-              />
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Password</label>
+              <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className={inputClass} />
             </div>
-
             {error && (
-              <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 p-3 rounded-lg text-xs text-red-700 dark:text-red-400">
+              <div className="glass border border-red-300/50 dark:border-red-700/50 p-3 rounded-lg text-xs text-red-700 dark:text-red-400">
                 ⚠️ {error}
               </div>
             )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-primary hover:bg-primaryHover disabled:opacity-50 text-white font-bold py-3 rounded-xl shadow-md transition text-sm"
-            >
+            <button type="submit" disabled={loading} className="btn-primary w-full py-3 rounded-xl text-sm disabled:opacity-50">
               {loading ? "Signing in..." : "Sign In to Admin Portal 🔐"}
             </button>
           </form>
@@ -251,10 +198,7 @@ function AdminAuthContent() {
       )}
 
       <div className="text-center">
-        <button
-          onClick={() => router.push("/")}
-          className="text-xs text-slate-500 dark:text-slate-400 hover:underline"
-        >
+        <button onClick={() => router.push("/")} className="text-xs text-slate-500 dark:text-slate-400 hover:underline">
           Cancel & Return to Shop
         </button>
       </div>
