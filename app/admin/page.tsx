@@ -39,6 +39,12 @@ interface Order {
 
 type Tab = "accounts" | "inventory" | "orders";
 
+interface Toast {
+  id: number;
+  message: string;
+  type: "success" | "error";
+}
+
 function isAdmin(user: any): boolean {
   return user && (user.role === "admin" || user.role === "super-admin");
 }
@@ -63,7 +69,15 @@ export default function AdminPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [removingImageId, setRemovingImageId] = useState<string | null>(null);
   const [editingDevice, setEditingDevice] = useState<string | null>(null);
-  const [editImageData, setEditImageData] = useState<string | null>(null);
+  const [deletingDeviceId, setDeletingDeviceId] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  // === Toast notification helper ===
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3500);
+  };
 
   useEffect(() => {
     const stored = localStorage.getItem("ebuy_user");
@@ -106,40 +120,53 @@ export default function AdminPage() {
   }, [router]);
 
   const fetchSettings = async () => {
-    const res = await fetch("/api/settings");
-    const data = await res.json();
-    setSettings(data);
+    try {
+      const res = await fetch("/api/settings");
+      if (res.ok) setSettings(await res.json());
+    } catch {}
   };
 
   const fetchDevices = async () => {
-    const res = await fetch("/api/devices");
-    const data = await res.json();
-    setDevices(data);
+    try {
+      const res = await fetch("/api/devices");
+      if (res.ok) setDevices(await res.json());
+    } catch {}
   };
 
   const fetchOrders = async () => {
-    const res = await fetch("/api/orders");
-    if (!res.ok) return;
-    const data = await res.json();
-    setOrders(data);
+    try {
+      const res = await fetch("/api/orders");
+      if (!res.ok) return;
+      setOrders(await res.json());
+    } catch {}
   };
 
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingSettings(true);
-    const res = await fetch("/api/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(settings),
-    });
-    if (!res.ok) {
-      alert("Session expired. Please sign in again.");
-      router.push("/auth");
-      return;
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings),
+      });
+      if (!res.ok) {
+        if (res.status === 401) {
+          showToast("Session expired. Please sign in again.", "error");
+          setTimeout(() => router.push("/auth"), 1500);
+          return;
+        }
+        showToast("Failed to save settings.", "error");
+        return;
+      }
+      setSettingsSaved(true);
+      showToast("Settings updated successfully!");
+      setTimeout(() => setSettingsSaved(false), 3000);
+    } catch {
+      showToast("Network error. Please try again.", "error");
+    } finally {
+      setSavingSettings(false);
     }
-    setSavingSettings(false);
-    setSettingsSaved(true);
-    setTimeout(() => setSettingsSaved(false), 3000);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -152,30 +179,60 @@ export default function AdminPage() {
 
   const handleAddDevice = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch("/api/devices", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: newDevice.name,
-        price: parseInt(newDevice.price),
-        specs: newDevice.specs,
-        image: newDeviceImage,
-      }),
-    });
-    if (!res.ok) {
-      alert("Session expired. Please sign in again.");
-      router.push("/auth");
-      return;
+    try {
+      const res = await fetch("/api/devices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newDevice.name,
+          price: parseInt(newDevice.price),
+          specs: newDevice.specs,
+          image: newDeviceImage,
+        }),
+      });
+      if (!res.ok) {
+        if (res.status === 401) {
+          showToast("Session expired. Please sign in again.", "error");
+          setTimeout(() => router.push("/auth"), 1500);
+          return;
+        }
+        showToast("Failed to add device.", "error");
+        return;
+      }
+      showToast(`${newDevice.name} added to inventory!`);
+      setNewDevice({ name: "", price: "", specs: "" });
+      setNewDeviceImage(null);
+      fetchDevices();
+    } catch {
+      showToast("Network error. Please try again.", "error");
     }
-    setNewDevice({ name: "", price: "", specs: "" });
-    setNewDeviceImage(null);
-    fetchDevices();
   };
 
+  // === FIXED: Delete device with proper error handling ===
   const handleDeleteDevice = async (id: string) => {
     if (!confirm("Remove this device from inventory?")) return;
-    await fetch(`/api/devices/${id}`, { method: "DELETE" });
-    fetchDevices();
+    setDeletingDeviceId(id);
+    try {
+      const res = await fetch(`/api/devices/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 401) {
+          showToast("Session expired. Please sign in again.", "error");
+          setTimeout(() => router.push("/auth"), 1500);
+          return;
+        }
+        showToast(data.error || "Failed to remove device.", "error");
+        return;
+      }
+      showToast("Device removed from inventory.");
+      // Remove from local state immediately for instant feedback
+      setDevices((prev) => prev.filter((d) => d.id !== id));
+      fetchDevices(); // Re-fetch to ensure sync
+    } catch {
+      showToast("Network error. Please try again.", "error");
+    } finally {
+      setDeletingDeviceId(null);
+    }
   };
 
   // === Remove image from existing device ===
@@ -189,12 +246,15 @@ export default function AdminPage() {
         body: JSON.stringify({ image: null }),
       });
       if (!res.ok) {
-        alert("Failed to remove image. Please try again.");
+        showToast("Failed to remove image. Please try again.", "error");
         return;
       }
+      showToast("Image removed.");
+      // Update local state immediately
+      setDevices((prev) => prev.map((d) => d.id === deviceId ? { ...d, image: null } : d));
       fetchDevices();
     } catch {
-      alert("Network error. Please try again.");
+      showToast("Network error. Please try again.", "error");
     } finally {
       setRemovingImageId(null);
     }
@@ -207,8 +267,6 @@ export default function AdminPage() {
     const reader = new FileReader();
     reader.onload = async () => {
       const imageData = reader.result as string;
-      setEditImageData(imageData);
-      // Immediately save to server
       try {
         const res = await fetch(`/api/devices/${deviceId}`, {
           method: "PATCH",
@@ -216,22 +274,38 @@ export default function AdminPage() {
           body: JSON.stringify({ image: imageData }),
         });
         if (res.ok) {
+          showToast("Image updated!");
           fetchDevices();
           setEditingDevice(null);
-          setEditImageData(null);
+        } else {
+          showToast("Failed to update image.", "error");
         }
-      } catch {}
+      } catch {
+        showToast("Network error.", "error");
+      }
     };
     reader.readAsDataURL(file);
   };
 
+  // === Update order status with error handling ===
   const handleUpdateOrderStatus = async (id: string, status: string) => {
-    await fetch("/api/orders", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, status }),
-    });
-    fetchOrders();
+    try {
+      const res = await fetch("/api/orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status }),
+      });
+      if (!res.ok) {
+        showToast("Failed to update order status.", "error");
+        return;
+      }
+      showToast(`Order marked as ${status}.`);
+      // Update local state immediately
+      setOrders((prev) => prev.map((o) => o.id === id ? { ...o, status } : o));
+      fetchOrders();
+    } catch {
+      showToast("Network error. Please try again.", "error");
+    }
   };
 
   if (checking) {
@@ -251,7 +325,6 @@ export default function AdminPage() {
 
   const inputClass = "w-full text-sm border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 bg-white/80 dark:bg-slate-800/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none transition";
   const labelClass = "block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1";
-  const glassPanel = "glass-card rounded-2xl p-6";
 
   const statusColors: Record<string, string> = {
     pending: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
@@ -261,14 +334,29 @@ export default function AdminPage() {
   };
 
   const filteredOrders = statusFilter === "all" ? orders : orders.filter(o => o.status === statusFilter);
-
-  // Stats
   const pendingCount = orders.filter(o => o.status === "pending").length;
   const totalRevenue = orders.filter(o => o.status === "completed").reduce((sum, o) => sum + (o.downPayment || 0), 0);
 
   return (
     <>
       <Header />
+
+      {/* Toast notifications */}
+      <div className="fixed top-20 right-4 z-[100] space-y-2">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className={`px-4 py-3 rounded-xl shadow-lg text-sm font-medium slide-up ${
+              toast.type === "success"
+                ? "bg-emerald-500 text-white"
+                : "bg-red-500 text-white"
+            }`}
+          >
+            {toast.type === "success" ? "✓ " : "⚠ "}{toast.message}
+          </div>
+        ))}
+      </div>
+
       <main className="flex-1 max-w-4xl w-full mx-auto p-4 md:p-6 space-y-6">
         {/* Header with stats */}
         <div className="glass-card rounded-2xl p-6 fade-in">
@@ -282,7 +370,6 @@ export default function AdminPage() {
             </button>
           </div>
 
-          {/* Quick stats */}
           <div className="grid grid-cols-3 gap-3">
             <div className="glass rounded-xl p-3 text-center">
               <p className="text-2xl font-bold text-slate-900 dark:text-white">{devices.length}</p>
@@ -355,7 +442,6 @@ export default function AdminPage() {
         {/* Tab 2: Inventory Manager */}
         {activeTab === "inventory" && (
           <div className="space-y-5 fade-in">
-            {/* Add New Device */}
             <div className="glass-card rounded-2xl p-6">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4">Add New Device</h3>
               <form onSubmit={handleAddDevice} className="space-y-3">
@@ -384,7 +470,6 @@ export default function AdminPage() {
               </form>
             </div>
 
-            {/* Device List */}
             <div className="glass-card rounded-2xl p-6">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4">
                 Current Stock ({devices.length})
@@ -392,14 +477,12 @@ export default function AdminPage() {
               <div className="space-y-3">
                 {devices.map((device) => (
                   <div key={device.id} className="flex items-center gap-4 glass rounded-xl p-3">
-                    {/* Thumbnail with remove/edit image */}
                     <div className="relative group flex-shrink-0">
                       {device.image ? (
                         <>
                           <div className="h-16 w-16 device-image-wrap flex items-center justify-center p-1">
                             <img src={device.image} alt={device.name} className="h-full w-full object-contain" />
                           </div>
-                          {/* Remove image button */}
                           <button
                             onClick={() => handleRemoveImage(device.id)}
                             disabled={removingImageId === device.id}
@@ -429,18 +512,17 @@ export default function AdminPage() {
                       )}
                     </div>
 
-                    {/* Device info */}
                     <div className="flex-1 min-w-0">
                       <span className="font-bold text-slate-900 dark:text-white text-sm block truncate">{device.name}</span>
                       <p className="text-xs text-slate-500 dark:text-slate-400">{device.specs} • ₦{device.price.toLocaleString()}</p>
                     </div>
 
-                    {/* Delete device button */}
                     <button
                       onClick={() => handleDeleteDevice(device.id)}
-                      className="text-xs bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 px-3 py-1.5 rounded-lg transition flex-shrink-0 font-medium"
+                      disabled={deletingDeviceId === device.id}
+                      className="text-xs bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 px-3 py-1.5 rounded-lg transition flex-shrink-0 font-medium disabled:opacity-50"
                     >
-                      Remove
+                      {deletingDeviceId === device.id ? "Removing..." : "Remove"}
                     </button>
                   </div>
                 ))}
@@ -455,7 +537,6 @@ export default function AdminPage() {
         {/* Tab 3: Customer Orders & KYC */}
         {activeTab === "orders" && (
           <div className="space-y-4 fade-in">
-            {/* Status Filter */}
             <div className="flex gap-2 overflow-x-auto pb-1">
               {["all", "pending", "verified", "completed", "rejected"].map((s) => (
                 <button
@@ -495,13 +576,11 @@ export default function AdminPage() {
                       </span>
                     </div>
 
-                    {/* Down payment info */}
                     <div className="glass rounded-lg p-3 flex justify-between text-xs">
                       <span className="text-amber-700 dark:text-amber-400 font-medium">Down Payment (30%)</span>
                       <span className="font-bold text-amber-700 dark:text-amber-400">₦{order.downPayment?.toLocaleString() || 0}</span>
                     </div>
 
-                    {/* KYC details */}
                     <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1 pl-1">
                       <p>📞 {order.phone}</p>
                       <p>🆔 NIN: {order.nin || "N/A"}</p>
@@ -510,7 +589,6 @@ export default function AdminPage() {
                       <p>📅 {new Date(order.createdAt).toLocaleString()}</p>
                     </div>
 
-                    {/* Payment proof preview */}
                     {order.paymentProof && (
                       <details className="text-xs">
                         <summary className="cursor-pointer text-primary font-medium hover:underline">View payment receipt</summary>
@@ -524,7 +602,6 @@ export default function AdminPage() {
                       </details>
                     )}
 
-                    {/* Status update buttons */}
                     <div className="flex gap-2 pt-1">
                       <button onClick={() => handleUpdateOrderStatus(order.id, "verified")} className={`text-xs px-3 py-1.5 rounded-lg transition font-medium ${order.status === "verified" ? "bg-blue-200 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300" : "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40"}`}>✓ Verify</button>
                       <button onClick={() => handleUpdateOrderStatus(order.id, "completed")} className={`text-xs px-3 py-1.5 rounded-lg transition font-medium ${order.status === "completed" ? "bg-emerald-200 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300" : "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40"}`}>✓ Complete</button>

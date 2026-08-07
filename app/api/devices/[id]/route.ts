@@ -44,7 +44,7 @@ export async function PATCH(
     args.push(params.id);
 
     await db.execute({
-      sql: `UPDATE Device SET ${updates.join(", ")} WHERE id = ?`,
+      sql: `UPDATE Device SET ${updates.join(", ")}, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`,
       args,
     });
 
@@ -54,6 +54,10 @@ export async function PATCH(
     });
 
     const device = result.rows[0];
+    if (!device) {
+      return NextResponse.json({ error: "Device not found" }, { status: 404 });
+    }
+
     return NextResponse.json({
       id: device.id,
       name: device.name,
@@ -68,6 +72,7 @@ export async function PATCH(
 }
 
 // DELETE /api/devices/[id] — remove a device (admin only, JWT auth)
+// Device can be deleted even if orders exist (deviceId set to NULL in orders)
 export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
@@ -78,9 +83,23 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Check if device exists first
+    const checkResult = await db.execute({
+      sql: `SELECT id FROM Device WHERE id = ?`,
+      args: [params.id],
+    });
+
+    if (checkResult.rows.length === 0) {
+      return NextResponse.json({ error: "Device not found" }, { status: 404 });
+    }
+
     await db.execute({ sql: `DELETE FROM Device WHERE id = ?`, args: [params.id] });
     return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to delete device" }, { status: 500 });
+    console.error("Device delete error:", error);
+    return NextResponse.json(
+      { error: "Failed to delete device. It may have existing references." },
+      { status: 500 }
+    );
   }
 }

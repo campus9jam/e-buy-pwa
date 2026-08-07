@@ -62,7 +62,7 @@ export default function CheckoutPage() {
     }
 
     try {
-      await fetch("/api/orders", {
+      const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -77,6 +77,12 @@ export default function CheckoutPage() {
           paymentProof,
         }),
       });
+
+      if (!res.ok) {
+        alert("Failed to submit order. Please try again.");
+        setSubmitting(false);
+        return;
+      }
 
       sessionStorage.setItem(
         "lastOrder",

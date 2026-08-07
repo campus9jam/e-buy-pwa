@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getTokenFromRequest } from "@/lib/auth";
 
-// GET /api/devices — list all devices
+// GET /api/devices — list all devices (public, no auth needed for shop display)
 export async function GET() {
   try {
     const result = await db.execute(`SELECT * FROM Device ORDER BY createdAt ASC`);
@@ -15,11 +15,9 @@ export async function GET() {
     }));
     return NextResponse.json(devices);
   } catch (error) {
-    return NextResponse.json([
-      { id: "tecno-spark-20-pro", name: "Tecno Spark 20 Pro", price: 185000, specs: "8GB RAM | 256GB ROM", image: null },
-      { id: "infinix-hot-40i", name: "Infinix Hot 40i", price: 145000, specs: "4GB RAM | 128GB ROM", image: null },
-      { id: "samsung-galaxy-a15", name: "Samsung Galaxy A15", price: 210000, specs: "6GB RAM | 128GB ROM", image: null },
-    ]);
+    console.error("Devices fetch error:", error);
+    // Return empty array instead of dummy data — real errors shouldn't be masked
+    return NextResponse.json([]);
   }
 }
 
@@ -47,6 +45,7 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error) {
+    console.error("Device creation error:", error);
     return NextResponse.json({ error: "Failed to create device" }, { status: 500 });
   }
 }
