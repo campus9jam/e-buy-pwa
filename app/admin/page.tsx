@@ -12,11 +12,12 @@ interface Device {
   image: string | null;
 }
 
-interface Settings {
+interface PaymentAccount {
+  id: string;
   bankName: string;
   accountNumber: string;
   accountName: string;
-  agentWhatsApp: string;
+  isActive: boolean;
 }
 
 interface Order {
@@ -35,9 +36,21 @@ interface Order {
   paymentProof: string | null;
   status: string;
   createdAt: string;
+  paymentBankName?: string | null;
+  paymentAccountNumber?: string | null;
+  paymentAccountName?: string | null;
 }
 
-type Tab = "accounts" | "inventory" | "orders";
+interface DeviceRequest {
+  id: string;
+  deviceName: string;
+  notes: string | null;
+  customerWhatsApp: string;
+  status: string;
+  createdAt: string;
+}
+
+type Tab = "accounts" | "inventory" | "orders" | "requests";
 
 interface Toast {
   id: number;
@@ -54,25 +67,28 @@ export default function AdminPage() {
   const [authorized, setAuthorized] = useState(false);
   const [checking, setChecking] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("accounts");
-  const [settings, setSettings] = useState<Settings>({
-    bankName: "",
-    accountNumber: "",
-    accountName: "",
-    agentWhatsApp: "",
-  });
+
+  const [agentWhatsApp, setAgentWhatsApp] = useState("");
+  const [savingWhatsApp, setSavingWhatsApp] = useState(false);
+
+  const [accounts, setAccounts] = useState<PaymentAccount[]>([]);
+  const [newAccount, setNewAccount] = useState({ bankName: "", accountNumber: "", accountName: "" });
+  const [addingAccount, setAddingAccount] = useState(false);
+  const [togglingAccountId, setTogglingAccountId] = useState<string | null>(null);
+  const [deletingAccountId, setDeletingAccountId] = useState<string | null>(null);
+
   const [devices, setDevices] = useState<Device[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [deviceRequests, setDeviceRequests] = useState<DeviceRequest[]>([]);
   const [newDevice, setNewDevice] = useState({ name: "", price: "", specs: "" });
   const [newDeviceImage, setNewDeviceImage] = useState<string | null>(null);
-  const [savingSettings, setSavingSettings] = useState(false);
-  const [settingsSaved, setSettingsSaved] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [requestFilter, setRequestFilter] = useState<string>("pending");
   const [removingImageId, setRemovingImageId] = useState<string | null>(null);
   const [editingDevice, setEditingDevice] = useState<string | null>(null);
   const [deletingDeviceId, setDeletingDeviceId] = useState<string | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  // === Toast notification helper ===
   const showToast = (message: string, type: "success" | "error" = "success") => {
     const id = Date.now();
     setToasts((prev) => [...prev, { id, message, type }]);
@@ -87,13 +103,8 @@ export default function AdminPage() {
         if (isAdmin(localUser)) {
           setAuthorized(true);
           setChecking(false);
-          fetchSettings();
-          fetchDevices();
-          fetchOrders();
-          fetch("/api/auth/me")
-            .then((res) => res.json())
-            .then((data) => { if (!data.user) console.log("Cookie not yet set"); })
-            .catch(() => {});
+          fetchAll();
+          fetch("/api/auth/me").then((res) => res.json()).catch(() => {});
           return;
         }
       } catch {}
@@ -105,9 +116,7 @@ export default function AdminPage() {
         if (data.user && isAdmin(data.user)) {
           localStorage.setItem("ebuy_user", JSON.stringify(data.user));
           setAuthorized(true);
-          fetchSettings();
-          fetchDevices();
-          fetchOrders();
+          fetchAll();
         } else {
           router.push("/auth");
         }
@@ -119,10 +128,28 @@ export default function AdminPage() {
       });
   }, [router]);
 
+  const fetchAll = () => {
+    fetchSettings();
+    fetchAccounts();
+    fetchDevices();
+    fetchOrders();
+    fetchDeviceRequests();
+  };
+
   const fetchSettings = async () => {
     try {
       const res = await fetch("/api/settings");
-      if (res.ok) setSettings(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        setAgentWhatsApp(data.agentWhatsApp || "");
+      }
+    } catch {}
+  };
+
+  const fetchAccounts = async () => {
+    try {
+      const res = await fetch("/api/payment-accounts");
+      if (res.ok) setAccounts(await res.json());
     } catch {}
   };
 
@@ -141,14 +168,23 @@ export default function AdminPage() {
     } catch {}
   };
 
-  const handleSaveSettings = async (e: React.FormEvent) => {
+  const fetchDeviceRequests = async () => {
+    try {
+      const res = await fetch("/api/device-requests");
+      if (!res.ok) return;
+      setDeviceRequests(await res.json());
+    } catch {}
+  };
+
+  // === Agent WhatsApp ===
+  const handleSaveWhatsApp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSavingSettings(true);
+    setSavingWhatsApp(true);
     try {
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
+        body: JSON.stringify({ agentWhatsApp }),
       });
       if (!res.ok) {
         if (res.status === 401) {
@@ -156,19 +192,86 @@ export default function AdminPage() {
           setTimeout(() => router.push("/auth"), 1500);
           return;
         }
-        showToast("Failed to save settings.", "error");
+        showToast("Failed to save WhatsApp number.", "error");
         return;
       }
-      setSettingsSaved(true);
-      showToast("Settings updated successfully!");
-      setTimeout(() => setSettingsSaved(false), 3000);
+      showToast("Agent WhatsApp number updated!");
     } catch {
       showToast("Network error. Please try again.", "error");
     } finally {
-      setSavingSettings(false);
+      setSavingWhatsApp(false);
     }
   };
 
+  // === Payment accounts CRUD ===
+  const handleAddAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddingAccount(true);
+    try {
+      const res = await fetch("/api/payment-accounts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newAccount),
+      });
+      if (!res.ok) {
+        if (res.status === 401) {
+          showToast("Session expired. Please sign in again.", "error");
+          setTimeout(() => router.push("/auth"), 1500);
+          return;
+        }
+        showToast("Failed to add account.", "error");
+        return;
+      }
+      showToast(`${newAccount.bankName} account added!`);
+      setNewAccount({ bankName: "", accountNumber: "", accountName: "" });
+      fetchAccounts();
+    } catch {
+      showToast("Network error. Please try again.", "error");
+    } finally {
+      setAddingAccount(false);
+    }
+  };
+
+  const handleToggleAccount = async (account: PaymentAccount) => {
+    setTogglingAccountId(account.id);
+    try {
+      const res = await fetch(`/api/payment-accounts/${account.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !account.isActive }),
+      });
+      if (!res.ok) {
+        showToast("Failed to update account.", "error");
+        return;
+      }
+      showToast(account.isActive ? "Account deactivated." : "Account activated.");
+      setAccounts((prev) => prev.map((a) => a.id === account.id ? { ...a, isActive: !a.isActive } : a));
+    } catch {
+      showToast("Network error. Please try again.", "error");
+    } finally {
+      setTogglingAccountId(null);
+    }
+  };
+
+  const handleDeleteAccount = async (id: string) => {
+    if (!confirm("Remove this payment account?")) return;
+    setDeletingAccountId(id);
+    try {
+      const res = await fetch(`/api/payment-accounts/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        showToast("Failed to remove account.", "error");
+        return;
+      }
+      showToast("Account removed.");
+      setAccounts((prev) => prev.filter((a) => a.id !== id));
+    } catch {
+      showToast("Network error. Please try again.", "error");
+    } finally {
+      setDeletingAccountId(null);
+    }
+  };
+
+  // === Devices ===
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -208,7 +311,6 @@ export default function AdminPage() {
     }
   };
 
-  // === FIXED: Delete device with proper error handling ===
   const handleDeleteDevice = async (id: string) => {
     if (!confirm("Remove this device from inventory?")) return;
     setDeletingDeviceId(id);
@@ -225,9 +327,8 @@ export default function AdminPage() {
         return;
       }
       showToast("Device removed from inventory.");
-      // Remove from local state immediately for instant feedback
       setDevices((prev) => prev.filter((d) => d.id !== id));
-      fetchDevices(); // Re-fetch to ensure sync
+      fetchDevices();
     } catch {
       showToast("Network error. Please try again.", "error");
     } finally {
@@ -235,7 +336,6 @@ export default function AdminPage() {
     }
   };
 
-  // === Remove image from existing device ===
   const handleRemoveImage = async (deviceId: string) => {
     if (!confirm("Remove the image from this device?")) return;
     setRemovingImageId(deviceId);
@@ -250,7 +350,6 @@ export default function AdminPage() {
         return;
       }
       showToast("Image removed.");
-      // Update local state immediately
       setDevices((prev) => prev.map((d) => d.id === deviceId ? { ...d, image: null } : d));
       fetchDevices();
     } catch {
@@ -260,7 +359,6 @@ export default function AdminPage() {
     }
   };
 
-  // === Update device image ===
   const handleEditImageUpload = (e: React.ChangeEvent<HTMLInputElement>, deviceId: string) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -287,7 +385,7 @@ export default function AdminPage() {
     reader.readAsDataURL(file);
   };
 
-  // === Update order status with error handling ===
+  // === Orders ===
   const handleUpdateOrderStatus = async (id: string, status: string) => {
     try {
       const res = await fetch("/api/orders", {
@@ -300,9 +398,42 @@ export default function AdminPage() {
         return;
       }
       showToast(`Order marked as ${status}.`);
-      // Update local state immediately
       setOrders((prev) => prev.map((o) => o.id === id ? { ...o, status } : o));
       fetchOrders();
+    } catch {
+      showToast("Network error. Please try again.", "error");
+    }
+  };
+
+  // === Device requests ===
+  const handleUpdateRequestStatus = async (id: string, status: string) => {
+    try {
+      const res = await fetch("/api/device-requests", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status }),
+      });
+      if (!res.ok) {
+        showToast("Failed to update request.", "error");
+        return;
+      }
+      showToast(`Request marked as ${status}.`);
+      setDeviceRequests((prev) => prev.map((r) => r.id === id ? { ...r, status } : r));
+    } catch {
+      showToast("Network error. Please try again.", "error");
+    }
+  };
+
+  const handleDeleteRequest = async (id: string) => {
+    if (!confirm("Delete this device request?")) return;
+    try {
+      const res = await fetch(`/api/device-requests/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        showToast("Failed to delete request.", "error");
+        return;
+      }
+      showToast("Request deleted.");
+      setDeviceRequests((prev) => prev.filter((r) => r.id !== id));
     } catch {
       showToast("Network error. Please try again.", "error");
     }
@@ -331,25 +462,26 @@ export default function AdminPage() {
     verified: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
     completed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
     rejected: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+    notified: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+    fulfilled: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
   };
 
   const filteredOrders = statusFilter === "all" ? orders : orders.filter(o => o.status === statusFilter);
+  const filteredRequests = requestFilter === "all" ? deviceRequests : deviceRequests.filter(r => r.status === requestFilter);
   const pendingCount = orders.filter(o => o.status === "pending").length;
   const totalRevenue = orders.filter(o => o.status === "completed").reduce((sum, o) => sum + (o.downPayment || 0), 0);
+  const pendingRequestsCount = deviceRequests.filter(r => r.status === "pending").length;
 
   return (
     <>
       <Header />
 
-      {/* Toast notifications */}
       <div className="fixed top-20 right-4 z-[100] space-y-2">
         {toasts.map((toast) => (
           <div
             key={toast.id}
             className={`px-4 py-3 rounded-xl shadow-lg text-sm font-medium slide-up ${
-              toast.type === "success"
-                ? "bg-emerald-500 text-white"
-                : "bg-red-500 text-white"
+              toast.type === "success" ? "bg-emerald-500 text-white" : "bg-red-500 text-white"
             }`}
           >
             {toast.type === "success" ? "✓ " : "⚠ "}{toast.message}
@@ -362,7 +494,7 @@ export default function AdminPage() {
         <div className="glass-card rounded-2xl p-6 fade-in">
           <div className="flex justify-between items-center mb-5">
             <div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Admin Portal</h2>
+              <h2 className="font-brand text-xl font-bold text-slate-900 dark:text-white">Admin Portal</h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">Manage inventory, payments & orders</p>
             </div>
             <button onClick={() => router.push("/")} className="text-xs text-primary font-medium hover:underline">
@@ -370,24 +502,28 @@ export default function AdminPage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-4 gap-2.5">
             <div className="glass rounded-xl p-3 text-center">
-              <p className="text-2xl font-bold text-slate-900 dark:text-white">{devices.length}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Devices</p>
+              <p className="text-xl font-bold text-slate-900 dark:text-white">{devices.length}</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">Devices</p>
             </div>
             <div className="glass rounded-xl p-3 text-center">
-              <p className="text-2xl font-bold text-amber-500">{pendingCount}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Pending</p>
+              <p className="text-xl font-bold text-amber-500">{pendingCount}</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">Pending</p>
             </div>
             <div className="glass rounded-xl p-3 text-center">
-              <p className="text-2xl font-bold text-emerald-500">₦{(totalRevenue / 1000).toFixed(0)}K</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Revenue</p>
+              <p className="text-xl font-bold text-emerald-500">₦{(totalRevenue / 1000).toFixed(0)}K</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">Revenue</p>
+            </div>
+            <div className="glass rounded-xl p-3 text-center">
+              <p className="text-xl font-bold text-blue-500">{pendingRequestsCount}</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">Requests</p>
             </div>
           </div>
         </div>
 
         {/* Tab Controller */}
-        <div className="glass rounded-2xl p-2 flex space-x-1 fade-in">
+        <div className="glass rounded-2xl p-2 flex space-x-1 fade-in overflow-x-auto">
           <button
             onClick={() => setActiveTab("accounts")}
             className={`flex-1 text-xs font-bold py-2.5 rounded-xl transition whitespace-nowrap ${activeTab === "accounts" ? "btn-primary" : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"}`}
@@ -406,36 +542,93 @@ export default function AdminPage() {
           >
             📋 Orders ({orders.length})
           </button>
+          <button
+            onClick={() => setActiveTab("requests")}
+            className={`flex-1 text-xs font-bold py-2.5 rounded-xl transition whitespace-nowrap ${activeTab === "requests" ? "btn-primary" : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"}`}
+          >
+            🔔 Requests ({deviceRequests.length})
+          </button>
         </div>
 
-        {/* Tab 1: Payment Account Settings */}
+        {/* Tab 1: Payment Accounts (multiple, rotating) */}
         {activeTab === "accounts" && (
-          <div className="glass-card rounded-2xl p-6 fade-in">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">Payment Account Settings</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-              Active Monnify bank account for customer down payments.
-            </p>
-            <form onSubmit={handleSaveSettings} className="space-y-3">
-              <div>
-                <label className={labelClass}>Bank Name</label>
-                <input type="text" required value={settings.bankName} onChange={(e) => setSettings({ ...settings, bankName: e.target.value })} className={inputClass} />
+          <div className="space-y-5 fade-in">
+            {/* Agent WhatsApp */}
+            <div className="glass-card rounded-2xl p-6">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">Agent WhatsApp Number</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">Customers are directed here after checkout.</p>
+              <form onSubmit={handleSaveWhatsApp} className="flex gap-2">
+                <input
+                  type="text"
+                  required
+                  placeholder="+2348012345678"
+                  value={agentWhatsApp}
+                  onChange={(e) => setAgentWhatsApp(e.target.value)}
+                  className={inputClass}
+                />
+                <button type="submit" disabled={savingWhatsApp} className="btn-primary px-5 rounded-xl text-sm disabled:opacity-50 whitespace-nowrap">
+                  {savingWhatsApp ? "Saving..." : "Save"}
+                </button>
+              </form>
+            </div>
+
+            {/* Add new payment account */}
+            <div className="glass-card rounded-2xl p-6">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">Add Payment Account</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                Add multiple bank accounts — they'll shuffle automatically across checkouts to spread transactions and avoid confusion.
+              </p>
+              <form onSubmit={handleAddAccount} className="space-y-3">
+                <input type="text" required placeholder="Bank Name" value={newAccount.bankName} onChange={(e) => setNewAccount({ ...newAccount, bankName: e.target.value })} className={inputClass} />
+                <input type="text" required placeholder="Account Number" value={newAccount.accountNumber} onChange={(e) => setNewAccount({ ...newAccount, accountNumber: e.target.value })} className={inputClass} />
+                <input type="text" required placeholder="Account Holder Name" value={newAccount.accountName} onChange={(e) => setNewAccount({ ...newAccount, accountName: e.target.value })} className={inputClass} />
+                <button type="submit" disabled={addingAccount} className="btn-primary w-full py-3 rounded-xl text-sm disabled:opacity-50">
+                  {addingAccount ? "Adding..." : "+ Add Account"}
+                </button>
+              </form>
+            </div>
+
+            {/* Account list */}
+            <div className="glass-card rounded-2xl p-6">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4">
+                Payment Accounts ({accounts.filter(a => a.isActive).length} active of {accounts.length})
+              </h3>
+              <div className="space-y-3">
+                {accounts.map((account) => (
+                  <div key={account.id} className="glass rounded-xl p-4 flex items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-slate-900 dark:text-white text-sm truncate">{account.bankName}</p>
+                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${account.isActive ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400"}`}>
+                          {account.isActive ? "Active" : "Inactive"}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">{account.accountNumber}</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500 truncate">{account.accountName}</p>
+                    </div>
+                    <div className="flex gap-2 flex-shrink-0">
+                      <button
+                        onClick={() => handleToggleAccount(account)}
+                        disabled={togglingAccountId === account.id}
+                        className="text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 px-3 py-1.5 rounded-lg transition font-medium disabled:opacity-50"
+                      >
+                        {account.isActive ? "Deactivate" : "Activate"}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteAccount(account.id)}
+                        disabled={deletingAccountId === account.id}
+                        className="text-xs bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 px-3 py-1.5 rounded-lg transition font-medium disabled:opacity-50"
+                      >
+                        {deletingAccountId === account.id ? "..." : "Remove"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {accounts.length === 0 && (
+                  <p className="text-center text-slate-400 dark:text-slate-500 text-sm py-8">No payment accounts added yet.</p>
+                )}
               </div>
-              <div>
-                <label className={labelClass}>Account Number</label>
-                <input type="text" required value={settings.accountNumber} onChange={(e) => setSettings({ ...settings, accountNumber: e.target.value })} className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>Account Holder Name</label>
-                <input type="text" required value={settings.accountName} onChange={(e) => setSettings({ ...settings, accountName: e.target.value })} className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>Agent WhatsApp Number (Format: +234...)</label>
-                <input type="text" required value={settings.agentWhatsApp} onChange={(e) => setSettings({ ...settings, agentWhatsApp: e.target.value })} className={inputClass} />
-              </div>
-              <button type="submit" disabled={savingSettings} className="btn-primary w-full py-3 rounded-xl text-sm disabled:opacity-50">
-                {savingSettings ? "Saving..." : settingsSaved ? "✓ Saved!" : "Update Settings 💾"}
-              </button>
-            </form>
+            </div>
           </div>
         )}
 
@@ -581,6 +774,12 @@ export default function AdminPage() {
                       <span className="font-bold text-amber-700 dark:text-amber-400">₦{order.downPayment?.toLocaleString() || 0}</span>
                     </div>
 
+                    {order.paymentBankName && (
+                      <div className="glass rounded-lg p-3 text-xs text-slate-500 dark:text-slate-400">
+                        <span className="font-medium">Paid to:</span> {order.paymentBankName} • {order.paymentAccountNumber}
+                      </div>
+                    )}
+
                     <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1 pl-1">
                       <p>📞 {order.phone}</p>
                       <p>🆔 NIN: {order.nin || "N/A"}</p>
@@ -609,6 +808,63 @@ export default function AdminPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab 4: On-demand Device Requests */}
+        {activeTab === "requests" && (
+          <div className="space-y-4 fade-in">
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {["pending", "notified", "fulfilled", "all"].map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setRequestFilter(s)}
+                  className={`text-xs font-medium px-3 py-1.5 rounded-lg transition whitespace-nowrap capitalize ${requestFilter === s ? "btn-primary" : "glass text-slate-600 dark:text-slate-300"}`}
+                >
+                  {s === "all" ? "All" : s}
+                </button>
+              ))}
+            </div>
+
+            {filteredRequests.length === 0 ? (
+              <div className="glass-card rounded-2xl p-12 text-center text-slate-400 dark:text-slate-500 text-sm">
+                {deviceRequests.length === 0 ? "No device requests yet." : "No requests with this status."}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredRequests.map((req) => {
+                  const cleanNumber = req.customerWhatsApp.replace(/[^0-9]/g, "");
+                  const waLink = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(`Hi! We're reaching out about your request for ${req.deviceName} on E-Buy. `)}`;
+                  return (
+                    <div key={req.id} className="glass-card rounded-2xl p-5 space-y-3">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-bold text-slate-900 dark:text-white text-sm">{req.deviceName}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">📱 {req.customerWhatsApp}</p>
+                          {req.notes && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">📝 {req.notes}</p>}
+                          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">📅 {new Date(req.createdAt).toLocaleString()}</p>
+                        </div>
+                        <span className={`text-xs font-medium px-2.5 py-1 rounded-full whitespace-nowrap ${statusColors[req.status] || statusColors.pending}`}>
+                          {req.status}
+                        </span>
+                      </div>
+                      <div className="flex gap-2 pt-1 flex-wrap">
+                        <a
+                          href={waLink}
+                          target="_blank"
+                          className="text-xs bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 px-3 py-1.5 rounded-lg transition font-medium"
+                        >
+                          💬 Contact on WhatsApp
+                        </a>
+                        <button onClick={() => handleUpdateRequestStatus(req.id, "notified")} className={`text-xs px-3 py-1.5 rounded-lg transition font-medium ${req.status === "notified" ? "bg-blue-200 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300" : "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40"}`}>Notified</button>
+                        <button onClick={() => handleUpdateRequestStatus(req.id, "fulfilled")} className={`text-xs px-3 py-1.5 rounded-lg transition font-medium ${req.status === "fulfilled" ? "bg-emerald-200 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300" : "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40"}`}>Fulfilled</button>
+                        <button onClick={() => handleDeleteRequest(req.id)} className="text-xs bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 px-3 py-1.5 rounded-lg transition font-medium">Delete</button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

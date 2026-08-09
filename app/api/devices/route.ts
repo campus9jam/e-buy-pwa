@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getTokenFromRequest } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 // GET /api/devices — list all devices (public, no auth needed for shop display)
 export async function GET() {
   try {

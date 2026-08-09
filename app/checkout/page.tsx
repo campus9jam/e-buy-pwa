@@ -13,17 +13,18 @@ interface Device {
   image?: string | null;
 }
 
-interface Settings {
+interface PaymentAccount {
+  id: string;
   bankName: string;
   accountNumber: string;
   accountName: string;
-  agentWhatsApp: string;
 }
 
 export default function CheckoutPage() {
   const router = useRouter();
   const [device, setDevice] = useState<Device | null>(null);
-  const [settings, setSettings] = useState<Settings | null>(null);
+  const [account, setAccount] = useState<PaymentAccount | null>(null);
+  const [accountError, setAccountError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -35,10 +36,14 @@ export default function CheckoutPage() {
       router.push("/");
     }
 
-    fetch("/api/settings")
-      .then((res) => res.json())
-      .then(setSettings)
-      .catch(() => {});
+    // Fetch a rotating payment account so transactions spread across multiple accounts
+    fetch("/api/checkout-account")
+      .then((res) => {
+        if (!res.ok) throw new Error("no account");
+        return res.json();
+      })
+      .then(setAccount)
+      .catch(() => setAccountError(true));
   }, [router]);
 
   const downPayment = device ? Math.round(device.price * 0.3) : 0;
@@ -75,6 +80,10 @@ export default function CheckoutPage() {
           downPayment,
           devicePrice: device.price,
           paymentProof,
+          paymentAccountId: account?.id || null,
+          paymentBankName: account?.bankName || null,
+          paymentAccountNumber: account?.accountNumber || null,
+          paymentAccountName: account?.accountName || null,
         }),
       });
 
@@ -98,8 +107,8 @@ export default function CheckoutPage() {
   };
 
   const copyAccountNumber = () => {
-    if (settings) {
-      navigator.clipboard.writeText(settings.accountNumber);
+    if (account) {
+      navigator.clipboard.writeText(account.accountNumber);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -203,32 +212,39 @@ export default function CheckoutPage() {
               ⚠️ Transfer only the down payment. Remaining 70% paid in installments after delivery.
             </p>
 
-            {/* Bank Transfer Details */}
-            <div className="bg-slate-900 dark:bg-slate-800 text-white p-4 rounded-xl space-y-3 shadow-lg">
-              <div className="flex justify-between text-xs text-slate-400">
-                <span>Target Bank Account (Monnify)</span>
-                <span className="text-emerald-400 font-medium flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
-                  Active
-                </span>
+            {/* Bank Transfer Details — rotating account */}
+            {accountError ? (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-xl text-xs text-red-700 dark:text-red-400">
+                ⚠️ No payment account is configured right now. Please contact support before transferring.
               </div>
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="font-bold text-base">{settings?.bankName || "Wema Bank"}</p>
-                  <p className="text-xl font-mono tracking-wider font-extrabold text-blue-400">
-                    {settings?.accountNumber || "9876543210"}
-                  </p>
-                  <p className="text-xs text-slate-300">{settings?.accountName || "E-Buy Global / Monnify"}</p>
+            ) : (
+              <div className="bg-slate-900 dark:bg-slate-800 text-white p-4 rounded-xl space-y-3 shadow-lg">
+                <div className="flex justify-between text-xs text-slate-400">
+                  <span>Target Bank Account (Monnify)</span>
+                  <span className="text-emerald-400 font-medium flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
+                    Active
+                  </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={copyAccountNumber}
-                  className="bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 text-xs text-blue-300 px-3 py-2 rounded-lg border border-slate-700 transition"
-                >
-                  {copied ? "✓ Copied" : "Copy"}
-                </button>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="font-bold text-base">{account?.bankName || "Loading..."}</p>
+                    <p className="text-xl font-mono tracking-wider font-extrabold text-blue-400">
+                      {account?.accountNumber || "••••••••••"}
+                    </p>
+                    <p className="text-xs text-slate-300">{account?.accountName || ""}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={copyAccountNumber}
+                    disabled={!account}
+                    className="bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 text-xs text-blue-300 px-3 py-2 rounded-lg border border-slate-700 transition disabled:opacity-50"
+                  >
+                    {copied ? "✓ Copied" : "Copy"}
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Proof of Payment Upload */}
@@ -245,7 +261,7 @@ export default function CheckoutPage() {
 
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || accountError}
             className="btn-primary w-full py-4 rounded-xl text-sm disabled:opacity-50"
           >
             {submitting ? "Submitting..." : "Submit Order & KYC →"}

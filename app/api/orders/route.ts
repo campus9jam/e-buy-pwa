@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getTokenFromRequest } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 // POST /api/orders — create a new order
 export async function POST(request: Request) {
   let body;
@@ -9,11 +11,9 @@ export async function POST(request: Request) {
     body = await request.json();
     const id = `order-${Date.now()}`;
 
-    // Calculate down payment if not provided (30% of device price)
     let downPayment = body.downPayment;
     let devicePrice = body.devicePrice;
 
-    // Fetch device info from DB to store snapshot in order (survives device deletion)
     const deviceResult = await db.execute({
       sql: `SELECT * FROM Device WHERE id = ?`,
       args: [body.deviceId],
@@ -25,14 +25,19 @@ export async function POST(request: Request) {
       downPayment = Math.round(devicePrice * 0.3);
     }
 
-    // Store device info directly in order so it survives device deletion
     const deviceName = device?.name || body.deviceName || "Unknown Device";
     const deviceSpecs = device?.specs || body.deviceSpecs || "";
     const deviceImage = device?.image || body.deviceImage || null;
 
+    // Payment account snapshot — whichever account was shown to the customer at checkout
+    const paymentAccountId = body.paymentAccountId || null;
+    const paymentBankName = body.paymentBankName || null;
+    const paymentAccountNumber = body.paymentAccountNumber || null;
+    const paymentAccountName = body.paymentAccountName || null;
+
     await db.execute({
-      sql: `INSERT INTO "Order" (id, deviceId, customerName, phone, bvn, nin, address, downPayment, devicePrice, deviceName, deviceSpecs, deviceImage, paymentProof, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+      sql: `INSERT INTO "Order" (id, deviceId, customerName, phone, bvn, nin, address, downPayment, devicePrice, deviceName, deviceSpecs, deviceImage, paymentProof, status, paymentAccountId, paymentBankName, paymentAccountNumber, paymentAccountName)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)`,
       args: [
         id,
         body.deviceId,
@@ -47,6 +52,10 @@ export async function POST(request: Request) {
         deviceSpecs,
         deviceImage,
         body.paymentProof || null,
+        paymentAccountId,
+        paymentBankName,
+        paymentAccountNumber,
+        paymentAccountName,
       ],
     });
 
@@ -71,8 +80,6 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Use stored device info from order (survives device deletion)
-    // Fall back to JOIN for old orders that might not have device info stored
     const result = await db.execute(`
       SELECT o.*,
              COALESCE(o.deviceName, d.name) as finalDeviceName,
@@ -99,6 +106,9 @@ export async function GET(request: Request) {
       paymentProof: row.paymentProof,
       status: row.status,
       createdAt: row.createdAt,
+      paymentBankName: row.paymentBankName,
+      paymentAccountNumber: row.paymentAccountNumber,
+      paymentAccountName: row.paymentAccountName,
     }));
 
     return NextResponse.json(orders);

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getTokenFromRequest } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 // PATCH /api/devices/[id] — update a device (admin only, JWT auth)
 // Supports removing image by setting image: null
 export async function PATCH(
