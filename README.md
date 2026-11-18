@@ -1,6 +1,6 @@
-# E-Buy PWA — Device & Motorcycle Financing Platform
+# E-Buy PWA — Bike & Phone Financing Platform
 
-A lean, serverless Progressive Web App for device financing with role-based access, Monnify bank transfer payments, and admin inventory management.
+A lean, serverless Progressive Web App for bike and phone financing with role-based access, Monnify bank transfer payments, and admin inventory management.
 
 ## Tech Stack
 
@@ -17,10 +17,10 @@ All pricing lives in `lib/pricing.ts` and is the single source of truth for the 
 
 | Rule | Value |
 |---|---|
-| Down payment | **20%** of device price |
+| Down payment | **20%** of product price |
 | VAT | **₦10,000** flat, paid at checkout |
 | Due at checkout | down payment + VAT |
-| Remaining balance | 80% of device price, paid in installments after delivery |
+| Remaining balance | 80% of product price, paid in installments after delivery |
 | Guarantors required | **3**, each with name, phone and address |
 
 The order API recomputes these amounts server-side, so a tampered client cannot change what is recorded.
@@ -59,7 +59,7 @@ Open [http://localhost:3000](http://localhost:3000)
 ### Admin Portal
 - **Monnify Account Settings**: Update bank name, account number, account name, and agent WhatsApp number dynamically (no redeployment needed)
 - **Multi-account rotation**: several collection accounts can be active; checkout rotates through them
-- **Inventory Manager**: Add and remove devices from the catalog
+- **Inventory Manager**: Add and remove products from the catalog
 - **Orders & KYC**: review customer details, all three guarantors, down payment + VAT, and the uploaded receipt
 
 ### Auth & Roles
@@ -132,7 +132,7 @@ e-buy-pwa/
 │   ├── auth/page.tsx            # Sign in / role selection
 │   ├── api/
 │   │   ├── devices/route.ts     # GET + POST devices
-│   │   ├── devices/[id]/route.ts # DELETE device
+│   │   ├── devices/[id]/route.ts # DELETE product
 │   │   ├── orders/route.ts      # POST order, GET orders (admin)
 │   │   └── settings/route.ts    # GET + PUT payment settings
 │   ├── checkout/page.tsx        # KYC + guarantors + Monnify payment + receipt upload
@@ -148,7 +148,7 @@ e-buy-pwa/
 │   ├── ads.ts                   # Homepage advert definitions + default ad
 │   ├── db.ts                    # libsql client + lazy schema upgrades
 │   ├── pricing.ts               # Down payment, VAT and balance rules
-│   └── seed.ts                  # Seed script (tables, devices, settings)
+│   └── seed.ts                  # Seed script (tables, products, settings)
 ├── public/
 │   ├── ads/                     # Advert creative (NNPC engine oil)
 │   ├── hero/                    # Hero motorcycle slides

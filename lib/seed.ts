@@ -96,9 +96,9 @@ async function main() {
 
   // Seed devices
   const devices = [
-    { id: "tecno-spark-20-pro", name: "Tecno Spark 20 Pro", price: 185000, specs: "8GB RAM | 256GB ROM" },
-    { id: "infinix-hot-40i", name: "Infinix Hot 40i", price: 145000, specs: "4GB RAM | 128GB ROM" },
-    { id: "samsung-galaxy-a15", name: "Samsung Galaxy A15", price: 210000, specs: "6GB RAM | 128GB ROM" },
+    { id: "jincheng-jc150", name: "Jincheng JC150-6", price: 780000, specs: "150cc | Manual | Petrol" },
+    { id: "qlink-xf200", name: "Qlink XF200", price: 950000, specs: "200cc | Manual | Petrol" },
+    { id: "haojue-hj125", name: "Haojue HJ125-8", price: 690000, specs: "125cc | Manual | Petrol" },
   ];
 
   for (const d of devices) {

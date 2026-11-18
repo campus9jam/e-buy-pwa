@@ -70,7 +70,7 @@ export default function SuccessPage() {
                 Order Summary
               </p>
 
-              {/* Device with image */}
+              {/* Product with image */}
               <div className="flex items-center gap-3">
                 {orderInfo.device.image ? (
                   <div className="h-16 w-16 device-image-wrap flex items-center justify-center p-1 flex-shrink-0">

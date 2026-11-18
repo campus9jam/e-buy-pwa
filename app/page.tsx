@@ -88,7 +88,7 @@ export default function LandingPage() {
           <div>
             <h2 className="font-brand text-xl font-bold text-slate-800 dark:text-slate-100">Available Inventory</h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              {loading ? "Loading devices..." : `${devices.length} devices available`}
+              {loading ? "Loading inventory..." : `${devices.length} products available`}
             </p>
           </div>
         </div>
@@ -119,7 +119,7 @@ export default function LandingPage() {
                       />
                     ) : (
                       <div className="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500">
-                        <span className="text-5xl mb-2">📱</span>
+                        <span className="text-5xl mb-2">🏍️</span>
                         <span className="text-xs font-medium">{device.name}</span>
                       </div>
                     )}
@@ -165,28 +165,28 @@ export default function LandingPage() {
           </div>
         )}
 
-        {/* On-demand device request banner */}
+        {/* On-demand request banner */}
         <div className="glass-card rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 fade-in">
           <div>
-            <p className="font-bold text-slate-900 dark:text-white text-sm">Can't find your device?</p>
+            <p className="font-bold text-slate-900 dark:text-white text-sm">Can't find the bike or phone you want?</p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Tell us what you're looking for and we'll notify you on WhatsApp when it's available.
+              Tell us the make and model and we'll WhatsApp you the moment it lands in stock.
             </p>
           </div>
           <button
             onClick={() => setShowRequestModal(true)}
             className="btn-outline px-5 py-2.5 rounded-xl text-sm whitespace-nowrap"
           >
-            Request a Device →
+            Request a Product →
           </button>
         </div>
       </main>
 
       <footer className="text-center py-6 text-xs text-slate-400 dark:text-slate-500 mt-auto">
-        E-Buy PWA &bull; Secure Device Financing
+        E-Buy &bull; Secure installment financing for bikes &amp; phones
       </footer>
 
-      {/* Device Request Modal */}
+      {/* Product request modal */}
       {showRequestModal && (
         <div className="fixed inset-0 modal-backdrop flex items-center justify-center p-4 z-[200]" onClick={() => setShowRequestModal(false)}>
           <div className="glass-card rounded-2xl p-6 max-w-md w-full scale-in" onClick={(e) => e.stopPropagation()}>
@@ -200,18 +200,18 @@ export default function LandingPage() {
               <>
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <h3 className="font-bold text-slate-900 dark:text-white text-base">Request a Device</h3>
+                    <h3 className="font-bold text-slate-900 dark:text-white text-base">Request a Product</h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">We'll notify you the moment it's available.</p>
                   </div>
                   <button onClick={() => setShowRequestModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xl leading-none">✕</button>
                 </div>
                 <form onSubmit={handleRequestSubmit} className="space-y-3">
                   <div>
-                    <label className={labelClass}>Device Name & Model</label>
+                    <label className={labelClass}>Product name & model</label>
                     <input
                       type="text"
                       required
-                      placeholder="e.g., iPhone 13 Pro Max 256GB"
+                      placeholder="e.g., Jincheng 150 or Tecno Spark 30"
                       value={requestForm.deviceName}
                       onChange={(e) => setRequestForm({ ...requestForm, deviceName: e.target.value })}
                       className={inputClass}
@@ -221,7 +221,7 @@ export default function LandingPage() {
                     <label className={labelClass}>Additional Notes (optional)</label>
                     <textarea
                       rows={2}
-                      placeholder="Color preference, storage size, budget, etc."
+                      placeholder="Colour, size, budget, etc."
                       value={requestForm.notes}
                       onChange={(e) => setRequestForm({ ...requestForm, notes: e.target.value })}
                       className={inputClass}

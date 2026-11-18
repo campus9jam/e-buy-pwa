@@ -48,6 +48,6 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error("Device creation error:", error);
-    return NextResponse.json({ error: "Failed to create device" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to create product" }, { status: 500 });
   }
 }

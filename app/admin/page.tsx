@@ -302,7 +302,7 @@ export default function AdminPage() {
           setTimeout(() => router.push("/auth"), 1500);
           return;
         }
-        showToast("Failed to add device.", "error");
+        showToast("Failed to add product.", "error");
         return;
       }
       showToast(`${newDevice.name} added to inventory!`);
@@ -315,7 +315,7 @@ export default function AdminPage() {
   };
 
   const handleDeleteDevice = async (id: string) => {
-    if (!confirm("Remove this device from inventory?")) return;
+    if (!confirm("Remove this product from inventory?")) return;
     setDeletingDeviceId(id);
     try {
       const res = await fetch(`/api/devices/${id}`, { method: "DELETE" });
@@ -326,10 +326,10 @@ export default function AdminPage() {
           setTimeout(() => router.push("/auth"), 1500);
           return;
         }
-        showToast(data.error || "Failed to remove device.", "error");
+        showToast(data.error || "Failed to remove product.", "error");
         return;
       }
-      showToast("Device removed from inventory.");
+      showToast("Product removed from inventory.");
       setDevices((prev) => prev.filter((d) => d.id !== id));
       fetchDevices();
     } catch {
@@ -508,7 +508,7 @@ export default function AdminPage() {
           <div className="grid grid-cols-4 gap-2.5">
             <div className="glass rounded-xl p-3 text-center">
               <p className="text-xl font-bold text-slate-900 dark:text-white">{devices.length}</p>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400">Devices</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">Products</p>
             </div>
             <div className="glass rounded-xl p-3 text-center">
               <p className="text-xl font-bold text-amber-500">{pendingCount}</p>
@@ -639,15 +639,15 @@ export default function AdminPage() {
         {activeTab === "inventory" && (
           <div className="space-y-5 fade-in">
             <div className="glass-card rounded-2xl p-6">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4">Add New Device</h3>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4">Add New Product</h3>
               <form onSubmit={handleAddDevice} className="space-y-3">
-                <input type="text" required placeholder="Phone name (e.g., Tecno Spark 30)" value={newDevice.name} onChange={(e) => setNewDevice({ ...newDevice, name: e.target.value })} className={inputClass} />
+                <input type="text" required placeholder="Product name (e.g., Jincheng 150)" value={newDevice.name} onChange={(e) => setNewDevice({ ...newDevice, name: e.target.value })} className={inputClass} />
                 <div className="grid grid-cols-2 gap-3">
                   <input type="number" required placeholder="Price (₦)" value={newDevice.price} onChange={(e) => setNewDevice({ ...newDevice, price: e.target.value })} className={inputClass} />
                   <input type="text" placeholder="Specs (e.g., 8GB RAM)" value={newDevice.specs} onChange={(e) => setNewDevice({ ...newDevice, specs: e.target.value })} className={inputClass} />
                 </div>
                 <div>
-                  <label className={labelClass}>Device Image (Thumbnail)</label>
+                  <label className={labelClass}>Product Image (Thumbnail)</label>
                   <div className="flex gap-3 items-start">
                     <input
                       type="file"
@@ -723,7 +723,7 @@ export default function AdminPage() {
                   </div>
                 ))}
                 {devices.length === 0 && (
-                  <p className="text-center text-slate-400 dark:text-slate-500 text-sm py-8">No devices in inventory yet.</p>
+                  <p className="text-center text-slate-400 dark:text-slate-500 text-sm py-8">No products in inventory yet.</p>
                 )}
               </div>
             </div>

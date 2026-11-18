@@ -1,7 +1,7 @@
 {
   "name": "E-Buy Mobile Financing",
   "short_name": "E-Buy",
-  "description": "Simple and accessible device financing platform.",
+  "description": "Simple, accessible installment financing for bikes and phones.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

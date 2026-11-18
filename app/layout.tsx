@@ -17,8 +17,8 @@ const sora = Sora({
 });
 
 export const metadata: Metadata = {
-  title: "E-Buy | Simple Device Financing",
-  description: "Own your device today with flexible payment solutions tailored for your lifestyle.",
+  title: "E-Buy | Simple Installment Financing",
+  description: "Own your bike or phone today with flexible installment plans.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

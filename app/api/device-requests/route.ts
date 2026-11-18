@@ -9,7 +9,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     if (!body.deviceName || !body.customerWhatsApp) {
-      return NextResponse.json({ error: "Device name and WhatsApp number are required" }, { status: 400 });
+      return NextResponse.json({ error: "Product name and WhatsApp number are required" }, { status: 400 });
     }
 
     const id = `req-${Date.now()}`;

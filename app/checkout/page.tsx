@@ -187,7 +187,7 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        {/* Device Summary with image */}
+        {/* Product summary with image */}
         <div className="glass-card rounded-2xl p-5 flex items-center gap-4 fade-in">
           {device.image ? (
             <div className="h-20 w-20 device-image-wrap flex items-center justify-center p-2 flex-shrink-0">
@@ -289,7 +289,7 @@ export default function CheckoutPage() {
             {/* Payment Breakdown */}
             <div className="glass rounded-xl p-4 space-y-2">
               <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
-                <span>Device Total Price</span>
+                <span>Total Price</span>
                 <span className="font-medium">₦{pricing.price.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
