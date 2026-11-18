@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import HeroSlider from "@/components/HeroSlider";
+import AdvertBanner from "@/components/AdvertBanner";
 import { DOWN_PAYMENT_PERCENT, computePricing } from "@/lib/pricing";
 
 interface Device {
@@ -78,6 +79,9 @@ export default function LandingPage() {
       <main className="flex-1 max-w-5xl w-full mx-auto p-4 md:p-6 space-y-8">
         {/* Hero Banner — motorcycle slides */}
         <HeroSlider />
+
+        {/* Advert — default slot is the NNPC engine oil promotion (lib/ads.ts) */}
+        <AdvertBanner />
 
         {/* Inventory Grid */}
         <div id="inventory" className="flex justify-between items-end scroll-mt-24">

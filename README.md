@@ -48,6 +48,7 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ### Customer Flow
 - Landing page hero slider featuring financed motorcycles, with the current deposit/VAT terms
+- Advert banner below the hero, driven by `lib/ads.ts` (default: NNPC engine oil, CTA opens WhatsApp)
 - Browse available inventory with a full price breakdown (price, 20% down payment, VAT, due at checkout, remaining balance)
 - Click "Buy Now" to start checkout
 - Fill KYC: full name, phone, NIN, delivery address and **three guarantors** (name, phone, address each)
@@ -140,13 +141,16 @@ e-buy-pwa/
 │   ├── layout.tsx
 │   └── page.tsx                 # Landing / shop catalog
 ├── components/
+│   ├── AdvertBanner.tsx         # Homepage advert slot (NNPC engine oil by default)
 │   ├── Header.tsx               # Shared navigation bar
 │   └── HeroSlider.tsx           # Motorcycle hero carousel
 ├── lib/
+│   ├── ads.ts                   # Homepage advert definitions + default ad
 │   ├── db.ts                    # libsql client + lazy schema upgrades
 │   ├── pricing.ts               # Down payment, VAT and balance rules
 │   └── seed.ts                  # Seed script (tables, devices, settings)
 ├── public/
+│   ├── ads/                     # Advert creative (NNPC engine oil)
 │   ├── hero/                    # Hero motorcycle slides
 │   ├── manifest.json            # PWA manifest
 │   └── icons/                   # App icons
