@@ -19,9 +19,13 @@ export async function GET(request: Request) {
 
   try {
     const orderCols = await db.execute(`PRAGMA table_info("Order")`);
-    out.orderColumns = orderCols.rows.map((r) => r.name);
-    const deviceCols = await db.execute(`PRAGMA table_info("Device")`);
-    out.deviceColumns = deviceCols.rows.map((r) => r.name);
+    out.orderColumns = orderCols.rows.map((r) => ({
+      name: r.name, type: r.type, notnull: r.notnull, dflt: r.dflt_value, pk: r.pk,
+    }));
+    const ddl = await db.execute(
+      `SELECT type, name, sql FROM sqlite_master WHERE tbl_name = 'Order'`
+    );
+    out.orderDdl = ddl.rows;
   } catch (e) {
     out.schemaError = String(e);
   }
