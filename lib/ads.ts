@@ -28,13 +28,13 @@ export const ADVERTS: Advert[] = [
     id: "nnpc-engine-oil",
     eyebrow: "Engine care",
     title: "NNPC engine oil, delivered with your ride",
-    body: "Keep your new bike running smooth from the first kilometre. Add NNPC engine oil to your order and we deliver it together with the bike.",
-    points: ["1L & 4L packs", "Delivered with your bike", "Ask the agent for sizes"],
+    body: "Keep your new bike running smooth from the first kilometre. Made in Nigeria for Nigerian roads. Add NNPC lubricants to your order and we deliver them with the bike.",
+    points: ["NNPC lubricants", "Delivered with your bike", "Ask the agent for sizes"],
     ctaLabel: "Order engine oil",
     ctaMessage:
       "Hello Agent, I would like to order NNPC engine oil. Please share the available sizes and prices.",
     image: "/ads/nnpc-engine-oil.jpg",
-    imageAlt: "One litre bottle of NNPC engine oil on a dark studio background",
+    imageAlt: "NNPC lubricants pack shot from NNPC Retail",
   },
 ];
 

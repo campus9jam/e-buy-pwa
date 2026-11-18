@@ -31,16 +31,21 @@ export default function AdvertBanner({ advertId }: AdvertBannerProps) {
       className="relative isolate overflow-hidden rounded-3xl border border-white/10 bg-[#0b0d12] shadow-lg fade-in"
     >
       {/* Product shot: a top band on mobile, the right half on desktop */}
-      <div className="relative h-[168px] w-full overflow-hidden sm:absolute sm:inset-y-0 sm:right-0 sm:h-auto sm:w-[56%]">
+      <div className="relative h-[190px] w-full overflow-hidden sm:absolute sm:inset-y-0 sm:right-0 sm:h-auto sm:w-[54%]">
         <img
           src={ad.image}
           alt={ad.imageAlt}
-          className="h-full w-full object-cover object-right brightness-105 contrast-[1.04]"
+          className="h-full w-full object-contain object-center brightness-105 contrast-[1.04]"
+          style={{
+            /* Feather every edge so the product photo melts into the card */
+            maskImage: "radial-gradient(78% 78% at 52% 50%, #000 58%, transparent 100%)",
+            WebkitMaskImage: "radial-gradient(78% 78% at 52% 50%, #000 58%, transparent 100%)",
+          }}
           draggable={false}
         />
         {/* Blend the photo into the card on both layouts */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#0b0d12] via-transparent to-transparent sm:hidden" />
-        <div className="absolute inset-0 hidden sm:block bg-[linear-gradient(90deg,#0b0d12_0%,rgba(11,13,18,0.92)_18%,rgba(11,13,18,0.35)_42%,transparent_62%)]" />
+        <div className="absolute inset-0 hidden sm:block bg-[linear-gradient(90deg,#0b0d12_0%,rgba(11,13,18,0.85)_16%,rgba(11,13,18,0.25)_38%,transparent_58%)]" />
       </div>
 
       {/* Warm glow that ties the card to the oil's amber light */}
