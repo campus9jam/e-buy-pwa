@@ -8,7 +8,7 @@ import { DOWN_PAYMENT_PERCENT, computePricing } from "@/lib/pricing";
 export default function SuccessPage() {
   const router = useRouter();
   const [orderInfo, setOrderInfo] = useState<{
-    device: { name: string; price: number; image?: string | null };
+    device: { name: string; price: number; image?: string | null; category?: string };
     customerName: string;
     downPayment?: number;
     vat?: number;
@@ -28,12 +28,16 @@ export default function SuccessPage() {
         .then((settings) => {
           const cleanNumber = settings.agentWhatsApp.replace(/[^0-9]/g, "");
           const price = Number(parsed.device?.price || 0);
-          const quote = computePricing(price);
+          const quote = computePricing(price, parsed.device?.category);
           const down = Number(parsed.downPayment ?? quote.downPayment);
           const vat = Number(parsed.vat ?? quote.vat);
           const paid = Number(parsed.amountPaid ?? down + vat);
+          const breakdown =
+            quote.category === "bike"
+              ? `₦${paid.toLocaleString()} (₦${quote.registration.toLocaleString()} registration + ₦${vat.toLocaleString()} VAT + ₦${down.toLocaleString()} first payment)`
+              : `₦${down.toLocaleString()} down payment plus ₦${vat.toLocaleString()} VAT (total ₦${paid.toLocaleString()})`;
           const msg = encodeURIComponent(
-            `Hello Agent, I have completed my ${DOWN_PAYMENT_PERCENT}% down payment of ₦${down.toLocaleString()} plus ₦${vat.toLocaleString()} VAT (total ₦${paid.toLocaleString()}) for: ${parsed.device?.name} (Total: ₦${price.toLocaleString()}). My payment proof has been submitted. Please confirm receipt.`
+            `Hello Agent, I have completed my payment of ${breakdown} for: ${parsed.device?.name} (Total: ₦${price.toLocaleString()}). My payment proof has been submitted. Please confirm receipt.`
           );
           setWhatsappLink(`https://wa.me/${cleanNumber}?text=${msg}`);
         })
@@ -41,7 +45,7 @@ export default function SuccessPage() {
     }
   }, []);
 
-  const pricing = orderInfo ? computePricing(orderInfo.device.price) : null;
+  const pricing = orderInfo ? computePricing(orderInfo.device.price, orderInfo.device.category) : null;
   const downPayment = orderInfo?.downPayment ?? pricing?.downPayment ?? 0;
   const vat = orderInfo?.vat ?? pricing?.vat ?? 0;
   const amountPaid = orderInfo?.amountPaid ?? downPayment + vat;
@@ -77,7 +81,9 @@ export default function SuccessPage() {
                     <img src={orderInfo.device.image} alt={orderInfo.device.name} className="h-full w-full object-contain" />
                   </div>
                 ) : (
-                  <div className="h-16 w-16 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-2xl flex-shrink-0">📱</div>
+                  <div className="h-16 w-16 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-2xl flex-shrink-0">
+                    {orderInfo.device.category === "bike" ? "🏍️" : "📱"}
+                  </div>
                 )}
                 <div>
                   <p className="text-sm font-semibold text-slate-900 dark:text-white">{orderInfo.device.name}</p>
@@ -89,8 +95,14 @@ export default function SuccessPage() {
                   <span>Total Price</span>
                   <span>₦{orderInfo.device.price.toLocaleString()}</span>
                 </div>
+                {pricing && pricing.registration > 0 && (
+                  <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
+                    <span>Registration fee</span>
+                    <span>₦{pricing.registration.toLocaleString()}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
-                  <span>Down Payment ({DOWN_PAYMENT_PERCENT}%)</span>
+                  <span>{pricing?.category === "bike" ? "First payment" : `Down Payment (${DOWN_PAYMENT_PERCENT}%)`}</span>
                   <span>₦{downPayment.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">

@@ -15,15 +15,18 @@ A lean, serverless Progressive Web App for bike and phone financing with role-ba
 
 All pricing lives in `lib/pricing.ts` and is the single source of truth for the landing page, checkout, order API, admin portal and confirmation page.
 
-| Rule | Value |
-|---|---|
-| Down payment | **20%** of product price |
-| VAT | **₦10,000** flat, paid at checkout |
-| Due at checkout | down payment + VAT |
-| Remaining balance | 80% of product price, paid in installments after delivery |
-| Guarantors required | **3**, each with name, phone and address |
+Products carry a `category` (`bike` or `phone`), and the two categories have different deposit rules.
 
-The order API recomputes these amounts server-side, so a tampered client cannot change what is recorded.
+| Rule | Bikes | Phones |
+|---|---|---|
+| Registration fee | **₦50,000** | — |
+| VAT | **₦10,000** flat | **₦10,000** flat |
+| First payment | **₦240,000** | **20%** of price |
+| Due at checkout | **₦300,000** flat (registration + VAT + first payment) | down payment + VAT |
+| Remaining balance | price − ₦240,000, paid in installments after delivery | 80% of price, paid in installments after delivery |
+| Guarantors required | **3**, each with name, phone and address | **3**, each with name, phone and address |
+
+Existing catalogue rows default to `phone`; the admin inventory form sets the category on new products. The order API recomputes these amounts server-side from the stored price and category, so a tampered client cannot change what is recorded.
 
 ## Quick Start (Local Dev)
 

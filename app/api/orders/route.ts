@@ -51,9 +51,9 @@ export async function POST(request: Request) {
     });
     const device = deviceResult.rows[0];
 
-    // Pricing is always recomputed server-side from the device price.
+    // Pricing is always recomputed server-side from the device price and category.
     const devicePrice = Number(device?.price || body.devicePrice || 0);
-    const { downPayment, vat, dueNow } = computePricing(devicePrice);
+    const { downPayment, vat, dueNow } = computePricing(devicePrice, device?.category ?? body.category);
 
     const deviceName = device?.name || body.deviceName || "Unknown Device";
     const deviceSpecs = device?.specs || body.deviceSpecs || "";

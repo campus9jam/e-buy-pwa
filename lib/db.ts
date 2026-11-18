@@ -42,6 +42,25 @@ const ORDER_COLUMN_MIGRATIONS = [
   `ALTER TABLE "Order" ADD COLUMN "guarantors" TEXT`,
 ];
 
+/**
+ * Columns added to the "Device" table after the first release.
+ * Existing rows default to "phone", which is what the catalogue held before
+ * bikes were added.
+ */
+const DEVICE_COLUMN_MIGRATIONS = [
+  `ALTER TABLE "Device" ADD COLUMN "category" TEXT DEFAULT 'phone'`,
+];
+
+async function migrateDeviceTable(): Promise<void> {
+  for (const sql of DEVICE_COLUMN_MIGRATIONS) {
+    try {
+      await db.execute(sql);
+    } catch {
+      // Column already exists — nothing to do.
+    }
+  }
+}
+
 async function migrateOrderTable(): Promise<void> {
   for (const sql of ORDER_COLUMN_MIGRATIONS) {
     try {
@@ -53,14 +72,16 @@ async function migrateOrderTable(): Promise<void> {
 }
 
 /**
- * Ensures the Order table has every column the current code writes to.
- * Safe to call on every request; the migration runs at most once per process.
+ * Ensures the Device and Order tables have every column the current code writes
+ * to. Safe to call on every request; the migration runs at most once per process.
  */
 export function ensureSchema(): Promise<void> {
   if (!globalForDb.schemaReady) {
-    globalForDb.schemaReady = migrateOrderTable().catch((error) => {
-      console.error("Schema migration skipped:", error);
-    });
+    globalForDb.schemaReady = migrateDeviceTable()
+      .then(migrateOrderTable)
+      .catch((error) => {
+        console.error("Schema migration skipped:", error);
+      });
   }
   return globalForDb.schemaReady;
 }

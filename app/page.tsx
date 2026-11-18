@@ -7,12 +7,15 @@ import HeroSlider from "@/components/HeroSlider";
 import AdvertBanner from "@/components/AdvertBanner";
 import { DOWN_PAYMENT_PERCENT, computePricing } from "@/lib/pricing";
 
+type ProductCategory = "bike" | "phone";
+
 interface Device {
   id: string;
   name: string;
   price: number;
   specs: string;
   image: string | null;
+  category?: ProductCategory;
 }
 
 export default function LandingPage() {
@@ -102,7 +105,7 @@ export default function LandingPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
             {devices.map((device, idx) => {
-              const { downPayment, vat, dueNow, remaining } = computePricing(device.price);
+              const pricing = computePricing(device.price, device.category);
               return (
                 <div
                   key={device.id}
@@ -134,21 +137,30 @@ export default function LandingPage() {
                         <span className="text-xs text-slate-500 dark:text-slate-400">Total Price</span>
                         <span className="text-slate-900 dark:text-white font-bold text-sm">₦{device.price.toLocaleString()}</span>
                       </div>
-                      <div className="flex justify-between items-baseline">
-                        <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">{DOWN_PAYMENT_PERCENT}% Down Payment</span>
-                        <span className="text-amber-600 dark:text-amber-400 font-extrabold text-base">₦{downPayment.toLocaleString()}</span>
-                      </div>
+                      {pricing.registration > 0 && (
+                        <div className="flex justify-between items-baseline">
+                          <span className="text-xs text-slate-500 dark:text-slate-400">Registration fee</span>
+                          <span className="text-slate-700 dark:text-slate-300 font-medium text-xs">₦{pricing.registration.toLocaleString()}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between items-baseline">
                         <span className="text-xs text-slate-500 dark:text-slate-400">VAT</span>
-                        <span className="text-slate-700 dark:text-slate-300 font-medium text-xs">₦{vat.toLocaleString()}</span>
+                        <span className="text-slate-700 dark:text-slate-300 font-medium text-xs">₦{pricing.vat.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                          {pricing.downPaymentLabel}
+                          {pricing.category === "phone" ? ` (${DOWN_PAYMENT_PERCENT}%)` : ""}
+                        </span>
+                        <span className="text-amber-600 dark:text-amber-400 font-extrabold text-base">₦{pricing.downPayment.toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between items-baseline pt-1.5 border-t border-slate-200/50 dark:border-slate-700/50">
                         <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">Due at checkout</span>
-                        <span className="text-slate-900 dark:text-white font-bold text-sm">₦{dueNow.toLocaleString()}</span>
+                        <span className="text-slate-900 dark:text-white font-bold text-sm">₦{pricing.dueNow.toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between items-baseline">
                         <span className="text-xs text-slate-500 dark:text-slate-400">Remaining (installments)</span>
-                        <span className="text-slate-600 dark:text-slate-300 font-medium text-xs">₦{remaining.toLocaleString()}</span>
+                        <span className="text-slate-600 dark:text-slate-300 font-medium text-xs">₦{pricing.remaining.toLocaleString()}</span>
                       </div>
                     </div>
 

@@ -16,6 +16,7 @@ async function main() {
     "price" INTEGER NOT NULL,
     "specs" TEXT NOT NULL,
     "image" TEXT,
+    "category" TEXT NOT NULL DEFAULT 'phone',
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`);
@@ -96,15 +97,15 @@ async function main() {
 
   // Seed devices
   const devices = [
-    { id: "jincheng-jc150", name: "Jincheng JC150-6", price: 780000, specs: "150cc | Manual | Petrol" },
-    { id: "qlink-xf200", name: "Qlink XF200", price: 950000, specs: "200cc | Manual | Petrol" },
-    { id: "haojue-hj125", name: "Haojue HJ125-8", price: 690000, specs: "125cc | Manual | Petrol" },
+    { id: "jincheng-jc150", name: "Jincheng JC150-6", price: 780000, specs: "150cc | Manual | Petrol", category: "bike" },
+    { id: "qlink-xf200", name: "Qlink XF200", price: 950000, specs: "200cc | Manual | Petrol", category: "bike" },
+    { id: "haojue-hj125", name: "Haojue HJ125-8", price: 690000, specs: "125cc | Manual | Petrol", category: "bike" },
   ];
 
   for (const d of devices) {
     await db.execute({
-      sql: `INSERT OR IGNORE INTO "Device" (id, name, price, specs, image) VALUES (?, ?, ?, ?, NULL)`,
-      args: [d.id, d.name, d.price, d.specs],
+      sql: `INSERT OR IGNORE INTO "Device" (id, name, price, specs, image, category) VALUES (?, ?, ?, ?, NULL, ?)`,
+      args: [d.id, d.name, d.price, d.specs, d.category ?? "phone"],
     });
   }
   console.log("✅ 3 devices seeded");

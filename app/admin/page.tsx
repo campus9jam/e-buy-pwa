@@ -11,6 +11,7 @@ interface Device {
   price: number;
   specs: string;
   image: string | null;
+  category?: "bike" | "phone";
 }
 
 interface PaymentAccount {
@@ -83,7 +84,7 @@ export default function AdminPage() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [deviceRequests, setDeviceRequests] = useState<DeviceRequest[]>([]);
-  const [newDevice, setNewDevice] = useState({ name: "", price: "", specs: "" });
+  const [newDevice, setNewDevice] = useState({ name: "", price: "", specs: "", category: "bike" });
   const [newDeviceImage, setNewDeviceImage] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [requestFilter, setRequestFilter] = useState<string>("pending");
@@ -294,6 +295,7 @@ export default function AdminPage() {
           price: parseInt(newDevice.price),
           specs: newDevice.specs,
           image: newDeviceImage,
+          category: newDevice.category,
         }),
       });
       if (!res.ok) {
@@ -306,7 +308,7 @@ export default function AdminPage() {
         return;
       }
       showToast(`${newDevice.name} added to inventory!`);
-      setNewDevice({ name: "", price: "", specs: "" });
+      setNewDevice({ name: "", price: "", specs: "", category: "bike" });
       setNewDeviceImage(null);
       fetchDevices();
     } catch {
@@ -537,7 +539,7 @@ export default function AdminPage() {
             onClick={() => setActiveTab("inventory")}
             className={`flex-1 text-xs font-bold py-2.5 rounded-xl transition whitespace-nowrap ${activeTab === "inventory" ? "btn-primary" : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"}`}
           >
-            📱 Inventory
+            🏍️ Inventory
           </button>
           <button
             onClick={() => setActiveTab("orders")}
@@ -644,8 +646,12 @@ export default function AdminPage() {
                 <input type="text" required placeholder="Product name (e.g., Jincheng 150)" value={newDevice.name} onChange={(e) => setNewDevice({ ...newDevice, name: e.target.value })} className={inputClass} />
                 <div className="grid grid-cols-2 gap-3">
                   <input type="number" required placeholder="Price (₦)" value={newDevice.price} onChange={(e) => setNewDevice({ ...newDevice, price: e.target.value })} className={inputClass} />
-                  <input type="text" placeholder="Specs (e.g., 8GB RAM)" value={newDevice.specs} onChange={(e) => setNewDevice({ ...newDevice, specs: e.target.value })} className={inputClass} />
+                  <select value={newDevice.category} onChange={(e) => setNewDevice({ ...newDevice, category: e.target.value })} className={inputClass}>
+                    <option value="bike">Bike</option>
+                    <option value="phone">Phone</option>
+                  </select>
                 </div>
+                <input type="text" placeholder="Specs (e.g., 150cc | Manual | Petrol)" value={newDevice.specs} onChange={(e) => setNewDevice({ ...newDevice, specs: e.target.value })} className={inputClass} />
                 <div>
                   <label className={labelClass}>Product Image (Thumbnail)</label>
                   <div className="flex gap-3 items-start">
@@ -703,13 +709,18 @@ export default function AdminPage() {
                           onClick={() => setEditingDevice(device.id)}
                           className="h-16 w-16 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-slate-400 hover:text-primary hover:bg-blue-50 dark:hover:bg-slate-700 transition text-xs"
                         >
-                          📱 +
+                          📷 +
                         </button>
                       )}
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <span className="font-bold text-slate-900 dark:text-white text-sm block truncate">{device.name}</span>
+                      <span className="font-bold text-slate-900 dark:text-white text-sm block truncate">
+                        {device.name}
+                        <span className="ml-2 align-middle text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300">
+                          {device.category === "bike" ? "Bike" : "Phone"}
+                        </span>
+                      </span>
                       <p className="text-xs text-slate-500 dark:text-slate-400">{device.specs} • ₦{device.price.toLocaleString()}</p>
                     </div>
 
@@ -760,7 +771,7 @@ export default function AdminPage() {
                             <img src={order.deviceImage} alt={order.deviceName} className="h-full w-full object-contain" />
                           </div>
                         ) : (
-                          <div className="h-12 w-12 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-slate-400 text-sm flex-shrink-0">📱</div>
+                          <div className="h-12 w-12 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-slate-400 text-sm flex-shrink-0">🛍️</div>
                         )}
                         <div>
                           <p className="font-bold text-slate-900 dark:text-white text-sm">{order.customerName}</p>

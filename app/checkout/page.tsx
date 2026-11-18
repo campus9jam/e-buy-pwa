@@ -7,9 +7,9 @@ import Header from "@/components/Header";
 import {
   DOWN_PAYMENT_PERCENT,
   GUARANTOR_COUNT,
-  VAT_AMOUNT,
   computePricing,
   formatNaira,
+  type ProductCategory,
 } from "@/lib/pricing";
 
 interface Device {
@@ -18,6 +18,7 @@ interface Device {
   price: number;
   specs: string;
   image?: string | null;
+  category?: ProductCategory;
 }
 
 interface PaymentAccount {
@@ -65,7 +66,7 @@ export default function CheckoutPage() {
       .catch(() => setAccountError(true));
   }, [router]);
 
-  const pricing = device ? computePricing(device.price) : null;
+  const pricing = device ? computePricing(device.price, device.category) : null;
 
   const updateGuarantor = (index: number, field: keyof Guarantor, value: string) => {
     setGuarantors((prev) =>
@@ -179,7 +180,7 @@ export default function CheckoutPage() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-white">Secure Checkout</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">KYC verification & down payment</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">KYC verification & payment at checkout</p>
             </div>
             <Link href="/" className="text-xs text-primary font-medium hover:underline">
               ← Back to Shop
@@ -194,7 +195,9 @@ export default function CheckoutPage() {
               <img src={device.image} alt={device.name} className="h-full w-full object-contain" />
             </div>
           ) : (
-            <div className="h-20 w-20 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-3xl flex-shrink-0">📱</div>
+            <div className="h-20 w-20 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center text-3xl flex-shrink-0">
+              {device.category === "bike" ? "🏍️" : "📱"}
+            </div>
           )}
           <div className="flex-1">
             <span className="font-bold text-slate-900 dark:text-white text-sm block">{device.name}</span>
@@ -283,7 +286,9 @@ export default function CheckoutPage() {
           {/* Payment Section */}
           <div className="glass-card rounded-2xl p-5 space-y-4 fade-in">
             <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-              3. Down Payment ({DOWN_PAYMENT_PERCENT}%) + VAT
+              {pricing.category === "bike"
+                ? `3. Checkout Payment (${formatNaira(pricing.dueNow)})`
+                : `3. Down Payment (${DOWN_PAYMENT_PERCENT}%) + VAT`}
             </h3>
 
             {/* Payment Breakdown */}
@@ -292,18 +297,37 @@ export default function CheckoutPage() {
                 <span>Total Price</span>
                 <span className="font-medium">₦{pricing.price.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
-                <span>Down Payment Rate</span>
-                <span className="font-medium">{DOWN_PAYMENT_PERCENT}%</span>
-              </div>
-              <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
-                <span>Down Payment</span>
-                <span className="font-medium">₦{pricing.downPayment.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
-                <span>VAT (flat)</span>
-                <span className="font-medium">₦{VAT_AMOUNT.toLocaleString()}</span>
-              </div>
+              {pricing.category === "bike" ? (
+                <>
+                  <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
+                    <span>Registration fee</span>
+                    <span className="font-medium">₦{pricing.registration.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
+                    <span>VAT (flat)</span>
+                    <span className="font-medium">₦{pricing.vat.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
+                    <span>First payment</span>
+                    <span className="font-medium">₦{pricing.downPayment.toLocaleString()}</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
+                    <span>Down Payment Rate</span>
+                    <span className="font-medium">{DOWN_PAYMENT_PERCENT}%</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
+                    <span>Down Payment</span>
+                    <span className="font-medium">₦{pricing.downPayment.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
+                    <span>VAT (flat)</span>
+                    <span className="font-medium">₦{pricing.vat.toLocaleString()}</span>
+                  </div>
+                </>
+              )}
               <div className="flex justify-between items-center pt-2 border-t border-slate-200/50 dark:border-slate-700/50">
                 <span className="text-sm font-bold text-amber-700 dark:text-amber-400">Transfer Now</span>
                 <span className="text-2xl font-extrabold text-amber-600 dark:text-amber-400">₦{pricing.dueNow.toLocaleString()}</span>
@@ -315,7 +339,9 @@ export default function CheckoutPage() {
             </div>
 
             <p className="text-xs text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-900/20 p-2.5 rounded-lg">
-              ⚠️ Transfer the {DOWN_PAYMENT_PERCENT}% down payment plus {formatNaira(VAT_AMOUNT)} VAT. Remaining {100 - DOWN_PAYMENT_PERCENT}% is paid in installments after delivery.
+              {pricing.category === "bike"
+                ? `⚠️ Transfer ${formatNaira(pricing.dueNow)} at checkout: ${formatNaira(pricing.registration)} registration, ${formatNaira(pricing.vat)} VAT and ${formatNaira(pricing.downPayment)} first payment. The remaining ${formatNaira(pricing.remaining)} is paid in installments after delivery.`
+                : `⚠️ Transfer the ${DOWN_PAYMENT_PERCENT}% down payment plus ${formatNaira(pricing.vat)} VAT. Remaining ${100 - DOWN_PAYMENT_PERCENT}% is paid in installments after delivery.`}
             </p>
 
             {/* Bank Transfer Details — rotating account */}
