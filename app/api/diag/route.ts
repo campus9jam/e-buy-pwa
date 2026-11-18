@@ -63,5 +63,16 @@ export async function GET(request: Request) {
     await db.execute({ sql: `DELETE FROM "Order" WHERE id = ?`, args: ["diag-large"] }).catch(() => {});
   }
 
+  // 3) clean up an end-to-end test order created through the real checkout
+  const url = new URL(request.url);
+  const cleanupId = url.searchParams.get("cleanup");
+  if (cleanupId) {
+    const del = await db.execute({
+      sql: `DELETE FROM "Order" WHERE id = ? AND customerName = 'DIAG TEST'`,
+      args: [cleanupId],
+    });
+    out.deleted = del.rowsAffected;
+  }
+
   return NextResponse.json(out);
 }

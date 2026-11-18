@@ -72,13 +72,70 @@ async function migrateOrderTable(): Promise<void> {
 }
 
 /**
- * Ensures the Device and Order tables have every column the current code writes
- * to. Safe to call on every request; the migration runs at most once per process.
+ * The first release required a BVN on every order. BVN is no longer collected
+ * (guarantors replaced it), so on databases created back then every insert
+ * fails with "NOT NULL constraint failed: Order.bvn".
+ *
+ * SQLite cannot drop NOT NULL in place, so rebuild the table with the same
+ * columns and data, only with "bvn" nullable. Runs inside one atomic batch:
+ * either the rebuilt table is in place or nothing changed.
+ */
+async function relaxOrderBvnColumn(): Promise<void> {
+  const info = await db.execute(`PRAGMA table_info("Order")`);
+  const columns = info.rows as unknown as Array<{
+    name: string;
+    type: string;
+    notnull: number;
+    dflt_value: unknown;
+    pk: number;
+  }>;
+
+  if (columns.length === 0) return;
+
+  const bvn = columns.find((c) => String(c.name).toLowerCase() === "bvn");
+  if (!bvn || Number(bvn.notnull) !== 1) return;
+
+  const definitions = columns.map((c) => {
+    const name = String(c.name);
+    const type = c.type ? String(c.type) : "TEXT";
+    const isPrimaryKey = Number(c.pk) === 1;
+    const notNull =
+      name.toLowerCase() === "bvn" ? false : Number(c.notnull) === 1;
+    const dflt =
+      c.dflt_value === null || c.dflt_value === undefined
+        ? ""
+        : ` DEFAULT ${String(c.dflt_value)}`;
+
+    return `"${name}" ${type}${notNull ? " NOT NULL" : ""}${
+      isPrimaryKey ? " PRIMARY KEY" : ""
+    }${dflt}`;
+  });
+
+  const names = columns.map((c) => `"${String(c.name)}"`).join(", ");
+
+  await db.batch(
+    [
+      `DROP TABLE IF EXISTS "Order__new"`,
+      `CREATE TABLE "Order__new" (${definitions.join(", ")})`,
+      `INSERT INTO "Order__new" (${names}) SELECT ${names} FROM "Order"`,
+      `DROP TABLE "Order"`,
+      `ALTER TABLE "Order__new" RENAME TO "Order"`,
+    ],
+    "write"
+  );
+
+  console.log("Schema migration: Order.bvn is now nullable");
+}
+
+/**
+ * Ensures the Device and Order tables match what the current code writes.
+ * Safe to call on every request; the migration runs at most once per process.
  */
 export function ensureSchema(): Promise<void> {
   if (!globalForDb.schemaReady) {
     globalForDb.schemaReady = migrateDeviceTable()
       .then(migrateOrderTable)
+      .then(relaxOrderBvnColumn)
       .catch((error) => {
         console.error("Schema migration skipped:", error);
       });
