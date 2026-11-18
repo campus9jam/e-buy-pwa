@@ -93,24 +93,26 @@ export default function HeroSlider() {
             className={`hero-slide absolute inset-0 ${i === index ? "is-active" : ""}`}
             aria-hidden={i !== index}
           >
-            <div className="absolute inset-y-0 right-0 w-full sm:w-[68%] md:w-[62%] overflow-hidden">
+            <div className="absolute inset-0 sm:left-auto sm:right-0 sm:w-[54%] md:w-[50%] overflow-hidden">
+              {/* Soft spotlight so the bike separates from the navy backdrop */}
+              <div className="absolute inset-0 bg-[radial-gradient(65%_60%_at_55%_58%,rgba(70,140,255,0.38),transparent_72%)]" />
               <img
                 src={item.image}
                 alt={item.alt}
-                className="h-full w-full object-cover object-center"
+                className="relative h-full w-full object-contain object-center brightness-110 contrast-[1.06] saturate-[1.08] drop-shadow-[0_20px_38px_rgba(0,0,0,0.55)]"
                 draggable={false}
               />
             </div>
-            {/* Readability overlays: deep brand navy fading right, stronger on mobile */}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#001438]/95 via-[#001438]/80 to-[#001438]/35 sm:hidden" />
-            <div className="absolute inset-0 hidden sm:block bg-gradient-to-r from-[#001a4d]/95 via-[#001a4d]/70 to-transparent" />
+            {/* Readability overlays: strong on mobile, clear over the bike on desktop */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#001438]/95 via-[#001438]/70 to-[#001438]/25 sm:hidden" />
+            <div className="absolute inset-0 hidden sm:block bg-[linear-gradient(90deg,#001a4d_0%,rgba(0,26,77,0.94)_26%,rgba(0,26,77,0.6)_42%,rgba(0,26,77,0.12)_60%,transparent_100%)]" />
             <div className="hero-grid-pattern" />
           </div>
         ))}
       </div>
 
       {/* Foreground content */}
-      <div className="relative z-10 flex min-h-[420px] flex-col justify-between gap-6 p-6 sm:min-h-[340px] md:p-9">
+      <div className="relative z-10 flex min-h-[460px] flex-col justify-between gap-6 p-6 sm:min-h-[400px] md:min-h-[420px] md:p-9">
         <div key={index} className="max-w-md fade-in">
           <div className="inline-flex items-center gap-1.5 bg-white/15 px-2.5 py-1 rounded-full text-[11px] font-medium text-white mb-3">
             <span className="w-1.5 h-1.5 bg-emerald-300 rounded-full" />

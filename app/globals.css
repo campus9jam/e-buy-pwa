@@ -137,7 +137,9 @@ body {
     linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
   background-size: 28px 28px;
-  mask-image: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent 80%);
+  /* Keep the texture behind the copy and let the motorcycle area stay clean */
+  mask-image: linear-gradient(105deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.4) 38%, transparent 66%);
+  -webkit-mask-image: linear-gradient(105deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.4) 38%, transparent 66%);
   pointer-events: none;
 }
 
@@ -250,8 +252,12 @@ body {
 }
 
 .hero-slide img {
-  transform: scale(1.02);
+  transform: scale(1);
   will-change: transform;
+  /* Feather the left edge so the photo blends into the navy hero instead of
+     showing a hard rectangle seam */
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.75) 6%, #000 12%);
+  mask-image: linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.75) 6%, #000 12%);
 }
 
 .hero-slide.is-active img {
@@ -259,8 +265,8 @@ body {
 }
 
 @keyframes heroKenBurns {
-  from { transform: scale(1.02); }
-  to { transform: scale(1.09); }
+  from { transform: scale(1); }
+  to { transform: scale(1.045); }
 }
 
 @media (prefers-reduced-motion: reduce) {
