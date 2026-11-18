@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Typecheck & build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+        env:
+          # Build never touches the real database: pages fetch data client-side
+          # and API routes are dynamic. A local file keeps the build hermetic.
+          DATABASE_URL: file:./ci.db
+          NEXT_TELEMETRY_DISABLED: "1"
+
+  smoke:
+    name: Post-deploy smoke test
+    # Only meaningful after a merge to main, which is what Vercel deploys.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Wait for the production deployment and check it responds
+        run: |
+          URL="https://e-buy-pwa.vercel.app"
+          echo "Checking $URL"
+          for attempt in $(seq 1 40); do
+            status=$(curl -s -o /tmp/home.html -w "%{http_code}" "$URL" || echo "000")
+            if [ "$status" = "200" ] && grep -q "__next" /tmp/home.html; then
+              echo "Home page responded 200 (attempt $attempt)"
+              break
+            fi
+            if [ "$attempt" = "40" ]; then
+              echo "::error::Production site did not return 200 within ~10 minutes (last status: $status)"
+              exit 1
+            fi
+            echo "Attempt $attempt: status $status — waiting 15s for Vercel to finish deploying"
+            sleep 15
+          done
+
+      - name: Check the devices API
+        run: |
+          for attempt in $(seq 1 10); do
+            body=$(curl -s -w "\n%{http_code}" https://e-buy-pwa.vercel.app/api/devices || echo "000")
+            code=$(echo "$body" | tail -n1)
+            payload=$(echo "$body" | head -n -1)
+            if [ "$code" = "200" ] && echo "$payload" | head -c 1 | grep -q "\["; then
+              echo "Devices API returned a JSON array (attempt $attempt)"
+              exit 0
+            fi
+            echo "Attempt $attempt: status $code — retrying in 10s"
+            sleep 10
+          done
+          echo "::error::Devices API did not return a JSON array"
+          exit 1

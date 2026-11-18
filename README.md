@@ -1,4 +1,4 @@
-# E-Buy PWA — Device Financing Platform
+# E-Buy PWA — Device & Motorcycle Financing Platform
 
 A lean, serverless Progressive Web App for device financing with role-based access, Monnify bank transfer payments, and admin inventory management.
 
@@ -7,8 +7,23 @@ A lean, serverless Progressive Web App for device financing with role-based acce
 - **Framework**: Next.js 14 (App Router) + TypeScript
 - **Styling**: Tailwind CSS
 - **Database**: Turso (libsql/SQLite at the edge) — free tier includes 500 databases
+- **Auth**: Firebase Google sign-in (admin) + JWT sessions, plus email/password admin login
 - **PWA**: Web App Manifest (installable on mobile/desktop)
-- **Deployment**: Vercel (zero-config)
+- **Deployment**: Vercel (zero-config) with GitHub Actions CI
+
+## Pricing Rules
+
+All pricing lives in `lib/pricing.ts` and is the single source of truth for the landing page, checkout, order API, admin portal and confirmation page.
+
+| Rule | Value |
+|---|---|
+| Down payment | **20%** of device price |
+| VAT | **₦10,000** flat, paid at checkout |
+| Due at checkout | down payment + VAT |
+| Remaining balance | 80% of device price, paid in installments after delivery |
+| Guarantors required | **3**, each with name, phone and address |
+
+The order API recomputes these amounts server-side, so a tampered client cannot change what is recorded.
 
 ## Quick Start (Local Dev)
 
@@ -32,20 +47,24 @@ Open [http://localhost:3000](http://localhost:3000)
 ## Features
 
 ### Customer Flow
-- Browse available device inventory
+- Landing page hero slider featuring financed motorcycles, with the current deposit/VAT terms
+- Browse available inventory with a full price breakdown (price, 20% down payment, VAT, due at checkout, remaining balance)
 - Click "Buy Now" to start checkout
-- Fill KYC form (name, phone, BVN)
+- Fill KYC: full name, phone, NIN, delivery address and **three guarantors** (name, phone, address each)
 - View active Monnify bank transfer details
 - Upload payment receipt (.jpg/.png/.pdf)
 - Submit order and chat with delivery agent on WhatsApp
 
 ### Admin Portal
 - **Monnify Account Settings**: Update bank name, account number, account name, and agent WhatsApp number dynamically (no redeployment needed)
+- **Multi-account rotation**: several collection accounts can be active; checkout rotates through them
 - **Inventory Manager**: Add and remove devices from the catalog
+- **Orders & KYC**: review customer details, all three guarantors, down payment + VAT, and the uploaded receipt
 
 ### Auth & Roles
 - Simple role-based access (Customer / Admin)
 - Admin portal is gated — only admin role can access
+- Google sign-in is optional: it is skipped gracefully when `NEXT_PUBLIC_GOOGLE_API_KEY` is not set
 
 ## Deploy to Vercel + GitHub
 
@@ -69,6 +88,30 @@ git push -u origin main
 | `DATABASE_URL` | Turso database URL | `libsql://e-buy-campus9jam.aws-ap-south-1.turso.io` |
 | `DATABASE_AUTH_TOKEN` | Turso database auth token | `eyJhbGciOi...` |
 | `ADMIN_SECRET` | Shared secret for admin API routes | `your-secure-string` |
+| `NEXT_PUBLIC_GOOGLE_API_KEY` | Firebase web API key for Google admin sign-in | `AIzaSy...` |
+
+## CI/CD
+
+`.github/workflows/ci.yml` runs on every push and pull request to `main`:
+
+1. **Typecheck & build** — `npm ci`, `npm run typecheck`, `npm run build` on Node 20 with a throwaway SQLite URL, so the pipeline needs no secrets.
+2. **Post-deploy smoke test** — after a push to `main`, waits for the Vercel deployment and checks that `https://e-buy-pwa.vercel.app` returns 200 and that `/api/devices` returns a JSON array.
+
+Deployment itself is handled by Vercel's Git integration: every push to `main` produces a production build, and pull requests get preview URLs. No deploy token is stored in the repo.
+
+Local equivalents:
+
+```bash
+npm run typecheck   # tsc --noEmit
+npm run build       # production build
+npm run verify      # typecheck + build
+```
+
+## Database Migrations
+
+`lib/seed.ts` creates every table and is safe to re-run (`CREATE TABLE IF NOT EXISTS`).
+
+Columns added to the `Order` table after the first release (`vat`, `amountPaid`, `guarantors`, device/payment snapshots) are applied automatically at runtime by `ensureSchema()` in `lib/db.ts`, so an existing production database upgrades itself on the first order request — no manual migration step.
 
 ## Turso Database Setup
 
@@ -82,6 +125,7 @@ git push -u origin main
 
 ```
 e-buy-pwa/
+├── .github/workflows/ci.yml     # Typecheck, build, post-deploy smoke test
 ├── app/
 │   ├── admin/page.tsx           # Admin dashboard
 │   ├── auth/page.tsx            # Sign in / role selection
@@ -90,17 +134,20 @@ e-buy-pwa/
 │   │   ├── devices/[id]/route.ts # DELETE device
 │   │   ├── orders/route.ts      # POST order, GET orders (admin)
 │   │   └── settings/route.ts    # GET + PUT payment settings
-│   ├── checkout/page.tsx        # KYC + Monnify payment + receipt upload
+│   ├── checkout/page.tsx        # KYC + guarantors + Monnify payment + receipt upload
 │   ├── success/page.tsx         # Order confirmation + WhatsApp link
 │   ├── globals.css
 │   ├── layout.tsx
 │   └── page.tsx                 # Landing / shop catalog
 ├── components/
-│   └── Header.tsx               # Shared navigation bar
+│   ├── Header.tsx               # Shared navigation bar
+│   └── HeroSlider.tsx           # Motorcycle hero carousel
 ├── lib/
-│   ├── db.ts                    # libsql database client
-│   └── seed.ts                  # Seed script (devices + settings)
+│   ├── db.ts                    # libsql client + lazy schema upgrades
+│   ├── pricing.ts               # Down payment, VAT and balance rules
+│   └── seed.ts                  # Seed script (tables, devices, settings)
 ├── public/
+│   ├── hero/                    # Hero motorcycle slides
 │   ├── manifest.json            # PWA manifest
 │   └── icons/                   # App icons
 ├── .env.example

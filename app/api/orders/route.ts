@@ -1,18 +1,49 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { db, ensureSchema } from "@/lib/db";
 import { getTokenFromRequest } from "@/lib/auth";
+import { GUARANTOR_COUNT, computePricing } from "@/lib/pricing";
 
 export const dynamic = "force-dynamic";
 
+interface Guarantor {
+  name: string;
+  phone: string;
+  address: string;
+}
+
+function normalizeGuarantors(input: unknown): Guarantor[] | null {
+  if (!Array.isArray(input) || input.length !== GUARANTOR_COUNT) return null;
+
+  const cleaned = input.map((raw) => {
+    const g = (raw || {}) as Record<string, unknown>;
+    return {
+      name: String(g.name ?? "").trim(),
+      phone: String(g.phone ?? "").trim(),
+      address: String(g.address ?? "").trim(),
+    };
+  });
+
+  const complete = cleaned.every((g) => g.name && g.phone && g.address);
+  return complete ? cleaned : null;
+}
+
 // POST /api/orders — create a new order
 export async function POST(request: Request) {
-  let body;
   try {
-    body = await request.json();
-    const id = `order-${Date.now()}`;
+    await ensureSchema();
+    const body = await request.json();
 
-    let downPayment = body.downPayment;
-    let devicePrice = body.devicePrice;
+    const guarantors = normalizeGuarantors(body.guarantors);
+    if (!guarantors) {
+      return NextResponse.json(
+        {
+          error: `You must provide ${GUARANTOR_COUNT} guarantors with a full name, phone number and address.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    const id = `order-${Date.now()}`;
 
     const deviceResult = await db.execute({
       sql: `SELECT * FROM Device WHERE id = ?`,
@@ -20,10 +51,9 @@ export async function POST(request: Request) {
     });
     const device = deviceResult.rows[0];
 
-    if (!downPayment || !devicePrice) {
-      devicePrice = Number(device?.price || body.devicePrice || 0);
-      downPayment = Math.round(devicePrice * 0.3);
-    }
+    // Pricing is always recomputed server-side from the device price.
+    const devicePrice = Number(device?.price || body.devicePrice || 0);
+    const { downPayment, vat, dueNow } = computePricing(devicePrice);
 
     const deviceName = device?.name || body.deviceName || "Unknown Device";
     const deviceSpecs = device?.specs || body.deviceSpecs || "";
@@ -36,21 +66,23 @@ export async function POST(request: Request) {
     const paymentAccountName = body.paymentAccountName || null;
 
     await db.execute({
-      sql: `INSERT INTO "Order" (id, deviceId, customerName, phone, bvn, nin, address, downPayment, devicePrice, deviceName, deviceSpecs, deviceImage, paymentProof, status, paymentAccountId, paymentBankName, paymentAccountNumber, paymentAccountName)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)`,
+      sql: `INSERT INTO "Order" (id, deviceId, customerName, phone, nin, address, downPayment, vat, amountPaid, devicePrice, deviceName, deviceSpecs, deviceImage, guarantors, paymentProof, status, paymentAccountId, paymentBankName, paymentAccountNumber, paymentAccountName)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)`,
       args: [
         id,
         body.deviceId,
         body.customerName,
         body.phone,
-        body.bvn || null,
         body.nin || null,
         body.address || null,
         downPayment,
+        vat,
+        dueNow,
         devicePrice,
         deviceName,
         deviceSpecs,
         deviceImage,
+        JSON.stringify(guarantors),
         body.paymentProof || null,
         paymentAccountId,
         paymentBankName,
@@ -60,7 +92,19 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(
-      { id, ...body, downPayment, devicePrice, deviceName, deviceSpecs, deviceImage, status: "pending" },
+      {
+        id,
+        ...body,
+        guarantors,
+        downPayment,
+        vat,
+        amountPaid: dueNow,
+        devicePrice,
+        deviceName,
+        deviceSpecs,
+        deviceImage,
+        status: "pending",
+      },
       { status: 201 }
     );
   } catch (error) {
@@ -72,6 +116,16 @@ export async function POST(request: Request) {
   }
 }
 
+function parseGuarantors(value: unknown): Guarantor[] {
+  if (typeof value !== "string" || !value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 // GET /api/orders — list all orders with full KYC (admin only, JWT auth)
 export async function GET(request: Request) {
   try {
@@ -79,6 +133,8 @@ export async function GET(request: Request) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    await ensureSchema();
 
     const result = await db.execute(`
       SELECT o.*,
@@ -99,10 +155,12 @@ export async function GET(request: Request) {
       devicePrice: Number(row.devicePrice || 0),
       customerName: row.customerName,
       phone: row.phone,
-      bvn: row.bvn,
       nin: row.nin,
       address: row.address,
+      guarantors: parseGuarantors(row.guarantors),
       downPayment: Number(row.downPayment || 0),
+      vat: Number(row.vat || 0),
+      amountPaid: Number(row.amountPaid || 0),
       paymentProof: row.paymentProof,
       status: row.status,
       createdAt: row.createdAt,

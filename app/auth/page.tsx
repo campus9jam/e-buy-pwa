@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Header from "@/components/Header";
-import { auth, googleProvider } from "@/lib/firebase";
+import { getFirebaseAuth, getGoogleProvider } from "@/lib/firebase";
 import { signInWithPopup } from "firebase/auth";
 
 function AdminAuthContent() {
@@ -67,8 +67,15 @@ function AdminAuthContent() {
     setGoogleLoading(true);
     setGoogleError("");
 
+    const auth = getFirebaseAuth();
+    if (!auth) {
+      setGoogleError("Google sign-in is not configured. Please use your email and password.");
+      setGoogleLoading(false);
+      return;
+    }
+
     try {
-      const result = await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, getGoogleProvider());
       const idToken = await result.user.getIdToken();
 
       const res = await fetch("/api/auth/google/verify", {

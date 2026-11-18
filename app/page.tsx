@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
+import HeroSlider from "@/components/HeroSlider";
+import { DOWN_PAYMENT_PERCENT, computePricing } from "@/lib/pricing";
 
 interface Device {
   id: string;
@@ -74,44 +76,11 @@ export default function LandingPage() {
     <>
       <Header />
       <main className="flex-1 max-w-5xl w-full mx-auto p-4 md:p-6 space-y-8">
-        {/* Hero Banner — enhanced graphics */}
-        <div className="hero-gradient text-white p-6 md:p-9 rounded-3xl shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center fade-in relative z-10 min-h-[190px]">
-          <div className="hero-grid-pattern" />
-          {/* Floating phone glyph illustration */}
-          <div className="absolute right-4 top-4 md:right-10 md:top-8 float-slow opacity-90 hidden sm:block">
-            <svg width="72" height="72" viewBox="0 0 72 72" fill="none">
-              <rect x="14" y="4" width="44" height="64" rx="10" fill="white" fillOpacity="0.14" stroke="white" strokeOpacity="0.35" strokeWidth="1.5" />
-              <rect x="20" y="12" width="32" height="44" rx="3" fill="white" fillOpacity="0.18" />
-              <circle cx="36" cy="61" r="2.4" fill="white" fillOpacity="0.6" />
-            </svg>
-          </div>
-          <div className="absolute right-16 bottom-2 md:right-32 md:bottom-6 float-slow opacity-70 hidden md:block" style={{ animationDelay: "1.2s" }}>
-            <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-              <circle cx="18" cy="18" r="17" fill="white" fillOpacity="0.12" stroke="white" strokeOpacity="0.3" />
-              <path d="M13 18.5L16.2 21.7L23.5 14.3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-
-          <div className="relative z-10">
-            <div className="inline-flex items-center gap-1.5 bg-white/15 px-2.5 py-1 rounded-full text-[11px] font-medium mb-3">
-              <span className="w-1.5 h-1.5 bg-emerald-300 rounded-full"></span>
-              Trusted device financing
-            </div>
-            <h1 className="font-brand text-2xl md:text-3xl font-extrabold mb-2 tracking-tight leading-tight">Own Your Device Today</h1>
-            <p className="text-blue-100 text-sm max-w-md leading-relaxed">
-              Simple device financing with flexible down payments and secure local verification.
-            </p>
-          </div>
-          <div className="mt-5 md:mt-0 relative z-10">
-            <div className="glass px-5 py-3 rounded-2xl text-center">
-              <p className="text-xs font-medium text-white/90">⚡ 30% Down Payment</p>
-              <p className="text-[10px] text-white/70 mt-0.5">Pay rest in installments</p>
-            </div>
-          </div>
-        </div>
+        {/* Hero Banner — motorcycle slides */}
+        <HeroSlider />
 
         {/* Inventory Grid */}
-        <div className="flex justify-between items-end">
+        <div id="inventory" className="flex justify-between items-end scroll-mt-24">
           <div>
             <h2 className="font-brand text-xl font-bold text-slate-800 dark:text-slate-100">Available Inventory</h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -129,8 +98,7 @@ export default function LandingPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
             {devices.map((device, idx) => {
-              const downPayment = Math.round(device.price * 0.3);
-              const remaining = device.price - downPayment;
+              const { downPayment, vat, dueNow, remaining } = computePricing(device.price);
               return (
                 <div
                   key={device.id}
@@ -163,10 +131,18 @@ export default function LandingPage() {
                         <span className="text-slate-900 dark:text-white font-bold text-sm">₦{device.price.toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between items-baseline">
-                        <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">30% Down Payment</span>
+                        <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">{DOWN_PAYMENT_PERCENT}% Down Payment</span>
                         <span className="text-amber-600 dark:text-amber-400 font-extrabold text-base">₦{downPayment.toLocaleString()}</span>
                       </div>
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-xs text-slate-500 dark:text-slate-400">VAT</span>
+                        <span className="text-slate-700 dark:text-slate-300 font-medium text-xs">₦{vat.toLocaleString()}</span>
+                      </div>
                       <div className="flex justify-between items-baseline pt-1.5 border-t border-slate-200/50 dark:border-slate-700/50">
+                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">Due at checkout</span>
+                        <span className="text-slate-900 dark:text-white font-bold text-sm">₦{dueNow.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-baseline">
                         <span className="text-xs text-slate-500 dark:text-slate-400">Remaining (installments)</span>
                         <span className="text-slate-600 dark:text-slate-300 font-medium text-xs">₦{remaining.toLocaleString()}</span>
                       </div>

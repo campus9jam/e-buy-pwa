@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
+import { DOWN_PAYMENT_PERCENT, computePricing } from "@/lib/pricing";
 
 export default function SuccessPage() {
   const router = useRouter();
@@ -10,6 +11,9 @@ export default function SuccessPage() {
     device: { name: string; price: number; image?: string | null };
     customerName: string;
     downPayment?: number;
+    vat?: number;
+    amountPaid?: number;
+    remaining?: number;
   } | null>(null);
   const [whatsappLink, setWhatsappLink] = useState("#");
 
@@ -23,9 +27,13 @@ export default function SuccessPage() {
         .then((res) => res.json())
         .then((settings) => {
           const cleanNumber = settings.agentWhatsApp.replace(/[^0-9]/g, "");
-          const downPayment = parsed.downPayment || Math.round(parsed.device?.price * 0.3) || 0;
+          const price = Number(parsed.device?.price || 0);
+          const quote = computePricing(price);
+          const down = Number(parsed.downPayment ?? quote.downPayment);
+          const vat = Number(parsed.vat ?? quote.vat);
+          const paid = Number(parsed.amountPaid ?? down + vat);
           const msg = encodeURIComponent(
-            `Hello Agent, I have completed my 30% down payment of ₦${downPayment.toLocaleString()} for: ${parsed.device?.name} (Total: ₦${parsed.device?.price?.toLocaleString()}). My payment proof has been submitted. Please confirm receipt.`
+            `Hello Agent, I have completed my ${DOWN_PAYMENT_PERCENT}% down payment of ₦${down.toLocaleString()} plus ₦${vat.toLocaleString()} VAT (total ₦${paid.toLocaleString()}) for: ${parsed.device?.name} (Total: ₦${price.toLocaleString()}). My payment proof has been submitted. Please confirm receipt.`
           );
           setWhatsappLink(`https://wa.me/${cleanNumber}?text=${msg}`);
         })
@@ -33,8 +41,11 @@ export default function SuccessPage() {
     }
   }, []);
 
-  const downPayment = orderInfo?.downPayment || (orderInfo ? Math.round(orderInfo.device.price * 0.3) : 0);
-  const remaining = orderInfo ? orderInfo.device.price - downPayment : 0;
+  const pricing = orderInfo ? computePricing(orderInfo.device.price) : null;
+  const downPayment = orderInfo?.downPayment ?? pricing?.downPayment ?? 0;
+  const vat = orderInfo?.vat ?? pricing?.vat ?? 0;
+  const amountPaid = orderInfo?.amountPaid ?? downPayment + vat;
+  const remaining = orderInfo?.remaining ?? pricing?.remaining ?? 0;
 
   return (
     <>
@@ -78,9 +89,17 @@ export default function SuccessPage() {
                   <span>Total Price</span>
                   <span>₦{orderInfo.device.price.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between text-xs text-amber-600 dark:text-amber-400 font-medium">
-                  <span>Down Payment Paid (30%)</span>
+                <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
+                  <span>Down Payment ({DOWN_PAYMENT_PERCENT}%)</span>
                   <span>₦{downPayment.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
+                  <span>VAT</span>
+                  <span>₦{vat.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-xs text-amber-600 dark:text-amber-400 font-bold">
+                  <span>Total Paid Now</span>
+                  <span>₦{amountPaid.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
                   <span>Remaining Balance</span>

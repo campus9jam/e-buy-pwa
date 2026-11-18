@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
+import { DOWN_PAYMENT_PERCENT } from "@/lib/pricing";
 
 interface Device {
   id: string;
@@ -29,10 +30,12 @@ interface Order {
   devicePrice: number;
   customerName: string;
   phone: string;
-  bvn: string;
   nin: string;
   address: string;
+  guarantors: { name: string; phone: string; address: string }[];
   downPayment: number;
+  vat: number;
+  amountPaid: number;
   paymentProof: string | null;
   status: string;
   createdAt: string;
@@ -769,9 +772,19 @@ export default function AdminPage() {
                       </span>
                     </div>
 
-                    <div className="glass rounded-lg p-3 flex justify-between text-xs">
-                      <span className="text-amber-700 dark:text-amber-400 font-medium">Down Payment (30%)</span>
-                      <span className="font-bold text-amber-700 dark:text-amber-400">₦{order.downPayment?.toLocaleString() || 0}</span>
+                    <div className="glass rounded-lg p-3 space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-amber-700 dark:text-amber-400 font-medium">Down Payment ({DOWN_PAYMENT_PERCENT}%)</span>
+                        <span className="font-bold text-amber-700 dark:text-amber-400">₦{order.downPayment?.toLocaleString() || 0}</span>
+                      </div>
+                      <div className="flex justify-between text-slate-500 dark:text-slate-400">
+                        <span>VAT</span>
+                        <span>₦{(order.vat || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between font-semibold text-slate-700 dark:text-slate-200 pt-1 border-t border-slate-200/50 dark:border-slate-700/50">
+                        <span>Total due at checkout</span>
+                        <span>₦{(order.amountPaid || (order.downPayment || 0) + (order.vat || 0)).toLocaleString()}</span>
+                      </div>
                     </div>
 
                     {order.paymentBankName && (
@@ -783,9 +796,27 @@ export default function AdminPage() {
                     <div className="text-xs text-slate-500 dark:text-slate-400 space-y-1 pl-1">
                       <p>📞 {order.phone}</p>
                       <p>🆔 NIN: {order.nin || "N/A"}</p>
-                      <p>🏦 BVN: {order.bvn || "N/A"}</p>
                       <p>📍 {order.address || "No address provided"}</p>
                       <p>📅 {new Date(order.createdAt).toLocaleString()}</p>
+                    </div>
+
+                    <div className="glass rounded-lg p-3 space-y-2">
+                      <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                        Guarantors ({order.guarantors?.length || 0}/3)
+                      </p>
+                      {order.guarantors && order.guarantors.length > 0 ? (
+                        <ul className="space-y-1.5">
+                          {order.guarantors.map((g, i) => (
+                            <li key={i} className="text-xs text-slate-600 dark:text-slate-300">
+                              <span className="font-semibold">{i + 1}. {g.name}</span>
+                              <span className="block text-slate-500 dark:text-slate-400">📞 {g.phone}</span>
+                              <span className="block text-slate-500 dark:text-slate-400">📍 {g.address}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-xs text-slate-400 dark:text-slate-500">No guarantors recorded for this order.</p>
+                      )}
                     </div>
 
                     {order.paymentProof && (

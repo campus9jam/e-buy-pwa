@@ -25,13 +25,22 @@ async function main() {
     "deviceId" TEXT NOT NULL,
     "customerName" TEXT NOT NULL,
     "phone" TEXT NOT NULL,
-    "bvn" TEXT,
     "nin" TEXT,
     "address" TEXT,
+    "guarantors" TEXT,
     "downPayment" INTEGER DEFAULT 0,
+    "vat" INTEGER DEFAULT 0,
+    "amountPaid" INTEGER DEFAULT 0,
     "devicePrice" INTEGER DEFAULT 0,
+    "deviceName" TEXT,
+    "deviceSpecs" TEXT,
+    "deviceImage" TEXT,
     "paymentProof" TEXT,
     "status" TEXT NOT NULL DEFAULT 'pending',
+    "paymentAccountId" TEXT,
+    "paymentBankName" TEXT,
+    "paymentAccountNumber" TEXT,
+    "paymentAccountName" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "Order_deviceId_fkey" FOREIGN KEY ("deviceId") REFERENCES "Device" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
@@ -43,6 +52,33 @@ async function main() {
     "accountNumber" TEXT NOT NULL,
     "accountName" TEXT NOT NULL,
     "agentWhatsApp" TEXT NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`);
+
+  await db.execute(`CREATE TABLE IF NOT EXISTS "PaymentAccount" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "bankName" TEXT NOT NULL,
+    "accountNumber" TEXT NOT NULL,
+    "accountName" TEXT NOT NULL,
+    "isActive" INTEGER NOT NULL DEFAULT 1,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`);
+
+  await db.execute(`CREATE TABLE IF NOT EXISTS "PaymentRotation" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "lastAccountId" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )`);
+
+  await db.execute(`CREATE TABLE IF NOT EXISTS "DeviceRequest" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "deviceName" TEXT NOT NULL,
+    "notes" TEXT,
+    "customerWhatsApp" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'pending',
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   )`);

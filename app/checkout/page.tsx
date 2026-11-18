@@ -4,6 +4,13 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
+import {
+  DOWN_PAYMENT_PERCENT,
+  GUARANTOR_COUNT,
+  VAT_AMOUNT,
+  computePricing,
+  formatNaira,
+} from "@/lib/pricing";
 
 interface Device {
   id: string;
@@ -20,6 +27,14 @@ interface PaymentAccount {
   accountName: string;
 }
 
+interface Guarantor {
+  name: string;
+  phone: string;
+  address: string;
+}
+
+const EMPTY_GUARANTOR: Guarantor = { name: "", phone: "", address: "" };
+
 export default function CheckoutPage() {
   const router = useRouter();
   const [device, setDevice] = useState<Device | null>(null);
@@ -27,6 +42,10 @@ export default function CheckoutPage() {
   const [accountError, setAccountError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [guarantors, setGuarantors] = useState<Guarantor[]>(
+    Array.from({ length: GUARANTOR_COUNT }, () => ({ ...EMPTY_GUARANTOR }))
+  );
 
   useEffect(() => {
     const stored = sessionStorage.getItem("selectedDevice");
@@ -46,12 +65,34 @@ export default function CheckoutPage() {
       .catch(() => setAccountError(true));
   }, [router]);
 
-  const downPayment = device ? Math.round(device.price * 0.3) : 0;
-  const remaining = device ? device.price - downPayment : 0;
+  const pricing = device ? computePricing(device.price) : null;
+
+  const updateGuarantor = (index: number, field: keyof Guarantor, value: string) => {
+    setGuarantors((prev) =>
+      prev.map((g, i) => (i === index ? { ...g, [field]: value } : g))
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!device) return;
+    if (!device || !pricing) return;
+    setFormError("");
+
+    const cleanedGuarantors = guarantors.map((g) => ({
+      name: g.name.trim(),
+      phone: g.phone.trim(),
+      address: g.address.trim(),
+    }));
+
+    const incomplete = cleanedGuarantors.findIndex(
+      (g) => !g.name || !g.phone || !g.address
+    );
+    if (incomplete !== -1) {
+      setFormError(
+        `Please complete the details for guarantor ${incomplete + 1}. All ${GUARANTOR_COUNT} guarantors are required.`
+      );
+      return;
+    }
 
     setSubmitting(true);
     const formData = new FormData(e.currentTarget);
@@ -74,10 +115,12 @@ export default function CheckoutPage() {
           deviceId: device.id,
           customerName: formData.get("customerName"),
           phone: formData.get("phone"),
-          bvn: formData.get("bvn"),
           nin: formData.get("nin"),
           address: formData.get("address"),
-          downPayment,
+          guarantors: cleanedGuarantors,
+          downPayment: pricing.downPayment,
+          vat: pricing.vat,
+          amountPaid: pricing.dueNow,
           devicePrice: device.price,
           paymentProof,
           paymentAccountId: account?.id || null,
@@ -88,19 +131,27 @@ export default function CheckoutPage() {
       });
 
       if (!res.ok) {
-        alert("Failed to submit order. Please try again.");
+        const data = await res.json().catch(() => ({}));
+        setFormError(data.error || "Failed to submit order. Please try again.");
         setSubmitting(false);
         return;
       }
 
       sessionStorage.setItem(
         "lastOrder",
-        JSON.stringify({ device, customerName: formData.get("customerName"), downPayment })
+        JSON.stringify({
+          device,
+          customerName: formData.get("customerName"),
+          downPayment: pricing.downPayment,
+          vat: pricing.vat,
+          amountPaid: pricing.dueNow,
+          remaining: pricing.remaining,
+        })
       );
       router.push("/success");
     } catch (error) {
       console.error("Order submission failed:", error);
-      alert("Something went wrong. Please try again.");
+      setFormError("Something went wrong. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -114,7 +165,7 @@ export default function CheckoutPage() {
     }
   };
 
-  if (!device) return null;
+  if (!device || !pricing) return null;
 
   const inputClass = "w-full text-sm border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 bg-white/80 dark:bg-slate-800/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary focus:outline-none transition";
   const labelClass = "block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1";
@@ -166,15 +217,9 @@ export default function CheckoutPage() {
               <label className={labelClass}>Phone Number</label>
               <input type="tel" name="phone" required placeholder="08012345678" className={inputClass} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={labelClass}>BVN</label>
-                <input type="text" name="bvn" maxLength={11} required placeholder="22200000000" className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>NIN</label>
-                <input type="text" name="nin" maxLength={11} required placeholder="12345678901" className={inputClass} />
-              </div>
+            <div>
+              <label className={labelClass}>NIN</label>
+              <input type="text" name="nin" maxLength={11} required placeholder="12345678901" className={inputClass} />
             </div>
             <div>
               <label className={labelClass}>Delivery Address</label>
@@ -182,34 +227,95 @@ export default function CheckoutPage() {
             </div>
           </div>
 
+          {/* Guarantors Section */}
+          <div className="glass-card rounded-2xl p-5 space-y-4 fade-in">
+            <div>
+              <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                2. Guarantors
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                You must provide {GUARANTOR_COUNT} guarantors. Each one needs a full name, phone number and address.
+              </p>
+            </div>
+
+            {guarantors.map((guarantor, i) => (
+              <div key={i} className="glass rounded-xl p-4 space-y-3">
+                <p className="text-[11px] font-bold text-primary uppercase tracking-wide">
+                  Guarantor {i + 1}
+                </p>
+                <div>
+                  <label className={labelClass}>Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g., Musa Ibrahim"
+                    value={guarantor.name}
+                    onChange={(e) => updateGuarantor(i, "name", e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Phone Number</label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="08012345678"
+                    value={guarantor.phone}
+                    onChange={(e) => updateGuarantor(i, "phone", e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Address</label>
+                  <textarea
+                    required
+                    rows={2}
+                    placeholder="House number, street, area, city, state"
+                    value={guarantor.address}
+                    onChange={(e) => updateGuarantor(i, "address", e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
           {/* Payment Section */}
           <div className="glass-card rounded-2xl p-5 space-y-4 fade-in">
             <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-              2. Down Payment (30%)
+              3. Down Payment ({DOWN_PAYMENT_PERCENT}%) + VAT
             </h3>
 
             {/* Payment Breakdown */}
             <div className="glass rounded-xl p-4 space-y-2">
               <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
                 <span>Device Total Price</span>
-                <span className="font-medium">₦{device.price.toLocaleString()}</span>
+                <span className="font-medium">₦{pricing.price.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
                 <span>Down Payment Rate</span>
-                <span className="font-medium">30%</span>
+                <span className="font-medium">{DOWN_PAYMENT_PERCENT}%</span>
+              </div>
+              <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
+                <span>Down Payment</span>
+                <span className="font-medium">₦{pricing.downPayment.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
+                <span>VAT (flat)</span>
+                <span className="font-medium">₦{VAT_AMOUNT.toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center pt-2 border-t border-slate-200/50 dark:border-slate-700/50">
                 <span className="text-sm font-bold text-amber-700 dark:text-amber-400">Transfer Now</span>
-                <span className="text-2xl font-extrabold text-amber-600 dark:text-amber-400">₦{downPayment.toLocaleString()}</span>
+                <span className="text-2xl font-extrabold text-amber-600 dark:text-amber-400">₦{pricing.dueNow.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 pt-1">
                 <span>Remaining (installments)</span>
-                <span>₦{remaining.toLocaleString()}</span>
+                <span>₦{pricing.remaining.toLocaleString()}</span>
               </div>
             </div>
 
             <p className="text-xs text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-900/20 p-2.5 rounded-lg">
-              ⚠️ Transfer only the down payment. Remaining 70% paid in installments after delivery.
+              ⚠️ Transfer the {DOWN_PAYMENT_PERCENT}% down payment plus {formatNaira(VAT_AMOUNT)} VAT. Remaining {100 - DOWN_PAYMENT_PERCENT}% is paid in installments after delivery.
             </p>
 
             {/* Bank Transfer Details — rotating account */}
@@ -258,6 +364,12 @@ export default function CheckoutPage() {
               className="w-full text-xs text-slate-500 dark:text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 dark:file:bg-slate-700 file:text-primary dark:file:text-blue-400 hover:file:bg-blue-100 border border-slate-300 dark:border-slate-600 rounded-lg bg-white/80 dark:bg-slate-800/80"
             />
           </div>
+
+          {formError && (
+            <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2.5 rounded-lg">
+              {formError}
+            </p>
+          )}
 
           <button
             type="submit"

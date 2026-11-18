@@ -236,3 +236,37 @@ body {
   background: rgba(15, 23, 42, 0.5);
   backdrop-filter: blur(4px);
 }
+
+/* === Hero motorcycle slider === */
+.hero-slide {
+  opacity: 0;
+  transition: opacity 900ms ease;
+  pointer-events: none;
+}
+
+.hero-slide.is-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.hero-slide img {
+  transform: scale(1.02);
+  will-change: transform;
+}
+
+.hero-slide.is-active img {
+  animation: heroKenBurns 9s ease-out forwards;
+}
+
+@keyframes heroKenBurns {
+  from { transform: scale(1.02); }
+  to { transform: scale(1.09); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-slide,
+  .hero-slide.is-active img {
+    animation: none;
+    transition: none;
+  }
+}
