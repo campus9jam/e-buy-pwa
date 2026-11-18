@@ -1,12 +1,37 @@
 {
+  "id": "/",
   "name": "E-Buy Mobile Financing",
   "short_name": "E-Buy",
   "description": "Simple, accessible installment financing for bikes and phones.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "portrait",
   "background_color": "#ffffff",
   "theme_color": "#0052FF",
-  "orientation": "portrait",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": [
+    "shopping",
+    "finance"
+  ],
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "Shop bikes and phones",
+      "short_name": "Shop",
+      "url": "/#shop"
+    },
+    {
+      "name": "Track my order",
+      "short_name": "Order",
+      "url": "/auth"
+    }
+  ],
   "icons": [
     {
       "src": "/icons/icon-192.png",
